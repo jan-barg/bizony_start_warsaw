@@ -51,7 +51,7 @@ class TestMiniWorld:
 
     def test_trap_labels_present(self):
         w = load_world()
-        assert any(l.is_bait for l in w.listings)
+        assert any(listing.is_bait for listing in w.listings)
         assert {t.trap_type for t in w.traps} == {"bait", "colorway"}
 
     def test_coupon_shapes(self):

@@ -146,7 +146,8 @@ def _messy_title(
 ) -> str:
     stream = rng(seed, "title", lid)
     colorway = product.colorway_name
-    if stream.random() < 0.20:
+    colorway_omitted = stream.random() < 0.20
+    if colorway_omitted:
         colorway = ""
     elif aliases_by_code.get(product.style_code) and stream.random() < 0.30:
         colorway = stream.choice(aliases_by_code[product.style_code])
@@ -158,7 +159,7 @@ def _messy_title(
         else:
             size_text = f"EU{size_eu}"
     pieces = [product.brand, product.model, colorway, size_text]
-    if stream.random() < 0.45:
+    if colorway_omitted or stream.random() < 0.45:
         pieces.append(product.style_code)
     if product.is_kids_version_of:
         pieces.append(stream.choice(["GS", "Kids", "Junior"]))
@@ -166,6 +167,8 @@ def _messy_title(
         pieces.append(stream.choice(["🔥", "new in box", "limited drop", "OVP"] ))
     if stream.random() < 0.15:
         pieces[stream.randrange(len(pieces))] = pieces[stream.randrange(len(pieces))].upper()
+        if product.style_code not in pieces:
+            pieces.append(product.style_code)
     return " ".join(piece for piece in pieces if piece).strip()
 
 

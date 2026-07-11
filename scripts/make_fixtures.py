@@ -17,11 +17,11 @@ from decimal import Decimal as D
 from pathlib import Path
 
 from dealhunter.core.enums import (
-    AccessTier, Action, AskKind, Carrier, Channel, Condition, Currency,
-    DecidedBy, Eligibility, Geo, HuntStatus, MatchFlag, TrustFlag,
+    AccessTier, Action, Carrier, Channel, Condition, Currency,
+    DecidedBy, Eligibility, Geo, MatchFlag,
 )
 from dealhunter.core.models import (
-    Ask, ColorwayAlias, Coupon, Evaluation, FxRate, GeoPromo, LineItem, Listing,
+    ColorwayAlias, Coupon, Evaluation, FxRate, GeoPromo, LineItem, Listing,
     MatchResult, Middleman, PriceEvent, Product, Receipt, RouteQuote,
     StoppingSnapshot, TrapRecord, Vendor, WhitelistEntry, World,
     canonical_json, quote_hash,
