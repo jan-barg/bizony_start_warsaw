@@ -191,6 +191,47 @@ def test_unrelated_title_is_rejected(world: World, listing: Listing, brief: Brie
     assert result.confidence == 0.0
 
 
+def test_ambiguous_same_model_without_color_is_flagged_unconfirmed(
+    world: World, listing: Listing, brief: Brief
+) -> None:
+    adult = next(product for product in world.products if product.style_code == "DD1391-100")
+    alternate = adult.model_copy(
+        update={
+            "id": "p_DD1391-200",
+            "style_code": "DD1391-200",
+            "colorway_name": "Blue/White",
+        }
+    )
+    expanded = world.model_copy(update={"products": [*world.products, alternate]})
+    result = match(
+        listing.model_copy(update={"raw_title": "Nike Dunk Low"}),
+        brief,
+        expanded,
+        NullClient(),
+    )
+    assert result.style_code is None
+    assert MatchFlag.COLORWAY_UNCONFIRMED in result.flags
+
+
+@pytest.mark.parametrize(
+    ("title", "style_code"),
+    [
+        ("Samba OG Cloud White Core Black EU 43", "GW2288"),
+        ("New Balance Grey EU 43", "M990GL6"),
+    ],
+)
+def test_unique_two_field_evidence_resolves_generated_title_omissions(
+    world: World,
+    listing: Listing,
+    brief: Brief,
+    title: str,
+    style_code: str,
+) -> None:
+    result = match(listing.model_copy(update={"raw_title": title}), brief, world, NullClient())
+    assert result.style_code == style_code
+    assert result.colorway_confirmed
+
+
 def test_mini_world_identity_is_perfect_and_color_trap_is_flagged(world: World) -> None:
     predictions: dict[str, str | None] = {}
     for candidate_listing in world.listings:

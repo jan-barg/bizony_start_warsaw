@@ -104,7 +104,7 @@ def test_not_exactly_three_candidates_abstains_without_call(world: World) -> Non
 
 
 def test_matcher_calls_tier_four_only_for_gray_case(world: World) -> None:
-    listing = world.listings[0].model_copy(update={"raw_title": "Nike Dunk Low"})
+    listing = world.listings[0].model_copy(update={"raw_title": "Nike Dunk"})
     brief = Brief(product_query="Nike Dunk Low", size_eu=Decimal("43"))
     client = CaptureClient({"choice": "DD1391-100", "reason": "adult candidate"})
     result = match(listing, brief, world, client)
@@ -113,7 +113,6 @@ def test_matcher_calls_tier_four_only_for_gray_case(world: World) -> None:
     assert result.style_code == "DD1391-100"
     assert not result.colorway_confirmed
     assert MatchFlag.LLM_MATCH_ONLY in result.flags
-    assert MatchFlag.COLORWAY_UNCONFIRMED not in result.flags
     assert ALERT_ONLY_FLAGS.intersection(result.flags) == {MatchFlag.LLM_MATCH_ONLY}
 
 

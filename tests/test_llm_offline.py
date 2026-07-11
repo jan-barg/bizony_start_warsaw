@@ -32,7 +32,7 @@ def test_all_null_and_replay_surfaces_work_with_sockets_blocked(
 
     monkeypatch.setattr(socket, "create_connection", blocked)
     world = World.model_validate_json((ROOT / "fixtures" / "mini_world.json").read_text())
-    listing = world.listings[0].model_copy(update={"raw_title": "Nike Dunk Low"})
+    listing = world.listings[0].model_copy(update={"raw_title": "Nike Dunk"})
     brief = Brief(product_query="Nike Dunk Low", size_eu=Decimal("43"))
     result = match(listing, brief, world, NullClient())
     assert result.style_code is None

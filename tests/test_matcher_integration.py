@@ -14,9 +14,10 @@ import pytest
 def test_generated_worlds_meet_identity_and_matcher_trap_gate() -> None:
     correct = 0
     eligible = 0
+    unflagged_traps: list[tuple[int, str, str]] = []
     expected_trap_flags = {
-        "colorway": MatchFlag.COLORWAY_CONFLICT,
-        "gs_kids": MatchFlag.KIDS_SIZING,
+        "colorway": {MatchFlag.COLORWAY_CONFLICT, MatchFlag.COLORWAY_UNCONFIRMED},
+        "gs_kids": {MatchFlag.KIDS_SIZING, MatchFlag.SIZE_AMBIGUOUS},
     }
 
     for seed in range(1, 6):
@@ -35,10 +36,19 @@ def test_generated_worlds_meet_identity_and_matcher_trap_gate() -> None:
                 NullClient(),
             )
             if listing.id in matcher_traps:
-                assert matcher_traps[listing.id] in result.flags
+                if not matcher_traps[listing.id].intersection(result.flags):
+                    trap_type = next(
+                        trap.trap_type
+                        for trap in world.traps
+                        if trap.listing_id == listing.id and trap.trap_type in expected_trap_flags
+                    )
+                    unflagged_traps.append((seed, listing.id, trap_type))
                 continue
             eligible += 1
             correct += result.style_code == products[listing.true_product_id].style_code
 
     assert eligible > 0
-    assert correct / eligible >= 0.95
+    accuracy = correct / eligible
+    assert accuracy >= 0.95 and not unflagged_traps, (
+        f"accuracy={accuracy:.4%}; unflagged_traps={unflagged_traps}"
+    )

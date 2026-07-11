@@ -352,8 +352,36 @@ def match(listing: Listing, brief: Brief, world: World, llm: LLMClient) -> Match
     tier2 = [product for product in model_candidates if _color_evidence(text, product, world)]
     if len(tier2) == 1:
         return _result(tier2[0], 0.95, flags, True)
+    two_field_candidates = [
+        product
+        for product in world.products
+        if sum(
+            (
+                normalize_text(product.brand) in detected_brands,
+                _model_evidence(text, product, world, MatchFlag.KIDS_SIZING in flags),
+                _color_evidence(text, product, world),
+            )
+        )
+        >= 2
+    ]
+    if MatchFlag.KIDS_SIZING in flags:
+        kids_two_field = [product for product in two_field_candidates if product.is_kids_version_of]
+        if kids_two_field:
+            two_field_candidates = kids_two_field
+    if len(two_field_candidates) == 1:
+        evidence_product = two_field_candidates[0]
+        confirmed = _color_evidence(text, evidence_product, world)
+        if _color_conflict(text, evidence_product, world):
+            flags.add(MatchFlag.COLORWAY_CONFLICT)
+            confirmed = False
+        elif not confirmed:
+            flags.add(MatchFlag.COLORWAY_UNCONFIRMED)
+        return _result(evidence_product, 0.95, flags, confirmed)
     if len(model_candidates) == 1 and _color_conflict(text, model_candidates[0], world):
         flags.add(MatchFlag.COLORWAY_CONFLICT)
+        return _result(model_candidates[0], 0.95, flags, False)
+    if len(model_candidates) == 1:
+        flags.add(MatchFlag.COLORWAY_UNCONFIRMED)
         return _result(model_candidates[0], 0.95, flags, False)
 
     ranked = rank_catalog(listing.raw_title, world)
@@ -371,6 +399,8 @@ def match(listing: Listing, brief: Brief, world: World, llm: LLMClient) -> Match
         return _result(top.product, top.score / 100.0, flags, confirmed)
 
     flags.add(MatchFlag.NAME_NEAR_MISS)
+    if len(model_candidates) > 1:
+        flags.add(MatchFlag.COLORWAY_UNCONFIRMED)
     top_three = [item.product for item in ranked[:3]]
     image_ref = listing.image_url if listing.image_url.startswith("image:sha256:") else None
     choice = adjudicate(
