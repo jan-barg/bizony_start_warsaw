@@ -3,6 +3,7 @@ from __future__ import annotations
 
 import math
 from decimal import Decimal
+from typing import Literal
 
 from ..core.config import Constants
 from ..core.enums import Currency
@@ -77,7 +78,7 @@ def generate_pricing(
             valid_from = stream.randrange(0, max(1, cfg.HORIZON - 4))
             duration = stream.randint(5, min(15, max(5, cfg.HORIZON - valid_from)))
             valid_to = min(cfg.HORIZON - 1, valid_from + duration - 1)
-            kind = "pct" if stream.random() < 0.70 else "flat"
+            kind: Literal["pct", "flat"] = "pct" if stream.random() < 0.70 else "flat"
             value = Decimal(stream.randint(10, 15)) if kind == "pct" else _price_boundary(10.0 * rate, vendor.currency)
             coupon = Coupon(
                 id=coupon_id(listing.id, valid_from),

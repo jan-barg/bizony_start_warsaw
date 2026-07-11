@@ -2,11 +2,9 @@
 from __future__ import annotations
 
 import hashlib
-import os
 import re
 import sqlite3
 from collections import Counter
-from decimal import Decimal
 from pathlib import Path
 
 import pytest
