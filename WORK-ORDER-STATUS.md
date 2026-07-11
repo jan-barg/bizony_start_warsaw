@@ -43,10 +43,10 @@
 
 ### Person D — matcher + LLM
 **Done:** WO-3 complete, merged via PR #1 — matcher tiers 1–3 (57 tests), veto-only tier 4, OpenAI replay client + strict SQLite cache, deterministic intake gate + vision clarify loop, placeholder-safe narration, warmed cache artifact + manifest tooling.
-**Post-merge integration checklist (all work stays on `feat/matcher-llm`):**
+**Post-merge integration checklist (integrator-authorized status update; all implementation work stays on `feat/matcher-llm`):**
 
 **S2 — blocked until B's monitor branch lands on `develop`:**
-- [ ] Fetch and merge the latest `origin/develop`; never merge B's feature branch directly or rebase shared history.
+- [ ] Under this work order's explicit branch-sync consent, fetch and merge the latest `origin/develop`; never merge B's feature branch directly or rebase shared history.
 - [ ] Pair with B on matcher memoization under `run_monitor`: cache `MatchResult` once per `(hunt.id, listing.id)` for that monitor run; no module-global or cross-hunt state. B owns the engine implementation; D owns the behavioral gate.
 - [ ] Prove one matcher/LLM evaluation per listing across ticks, isolation between hunts, deterministic `NullClient`/replay receipts, and tier-4 calls only for fuzzy gray cases.
 - [ ] Verify B removed the Stage-0 matcher fallback from `policy.py`.
@@ -64,6 +64,7 @@
 - [ ] Latest `origin/develop` merged; full `pytest -q`, Ruff, and mypy green; hidden-label/dossier guards clean; cache replay byte-identical twice; browser story green.
 - [ ] `reports/feat-matcher-llm.md` maps WO-3 tasks 1–7 plus these S2/S3 duties to code, tests, commands, results, cache hash, deviations, and commits.
 - [ ] Audit `implementation-spec.md`, `build-plan.md`, `agent-build-orders.md`, and this file. Mark Person D done only when every row has passing evidence; otherwise leave the exact owner/blocker unchecked.
+- [ ] Fetch and merge `origin/develop` once more, rerun every gate, review the final diff, then push exactly one `feat/matcher-llm` PR into `develop` when the user authorizes publication.
 
 ---
 

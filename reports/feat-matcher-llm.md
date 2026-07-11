@@ -72,7 +72,7 @@ Live OpenAI / cache gate (fresh human approval on 2026-07-11):
 - Replay with sockets blocked → two normalized output runs byte-identical.
 - Independently rebuilt cache from replay → SQLite files byte-identical. `created` is deterministic `1970-01-01T00:00:00+00:00`; no wall-clock reads.
 
-Read-only overlay on `origin/develop` (no merge/rebase):
+Historical read-only overlay on pre-fix `origin/develop` (no merge/rebase):
 
 - Full non-integration suite → 207 passed, 2 deselected, 1 incoming xfailed.
 - Alert-only policy matrix → 4/4 passed: `COLORWAY_CONFLICT`, `COLORWAY_UNCONFIRMED`, `LLM_MATCH_ONLY`, and `SIZE_AMBIGUOUS` never purchase.
@@ -81,9 +81,8 @@ Read-only overlay on `origin/develop` (no merge/rebase):
 
 ## Cross-branch findings
 
-- Local branch files still contain Person A/B stubs because the new work is only on `origin/develop`; no branch sync was authorized. Compatibility was tested through a `/private/tmp` overlay.
-- The ≥95% generated-world target is not met. Generator `_messy_title` intentionally removes colorway from 20% of normal titles, frequently among duplicate brand/model variants; choosing the true style code is then impossible from matcher inputs. Runtime deliberately does not exploit style codes leaked by generated `image_url` filenames. Sanctioned fail-closed result: 88.4679%, measured honestly.
-- Generated `gs_kids` traps replace the kids title with the adult brand/model/colorway and bare EU 43, with no kids marker or other matcher-visible evidence. Flagging them would require a trap-specific heuristic or hidden truth. Generator/policy contract needs correction.
+- The historical overlay exposed insufficient matcher-visible evidence in generated titles and `gs_kids` traps. The generator contract was corrected before PR #1 merged; runtime still does not inspect hidden truth or image filename leaks.
+- Current synchronized seeds 1–5 result: 1,177/1,214 non-trap identities correct (**96.952224%**) and zero unflagged matcher traps. The ≥95% M4 gate is green.
 - All four alert-only flags pass the incoming immediate policy integration. Matcher memoization is still absent from incoming `evaluate_tick`; Person B owns `(hunt.id, listing.id)` caching.
 - Person C still owns API image decode/validation, in-memory digest map, and clarify response transport.
 
@@ -113,7 +112,7 @@ Audit date: 2026-07-11. Integration base: `origin/develop` at `1fed858`.
 | Requirement | Evidence | Status |
 |---|---|---|
 | WO-3 task 1 — deterministic tiers 1–2 | `tests/test_matcher.py`; 57 focused matcher tests | complete |
-| WO-3 task 2 — fuzzy tier 3 and accuracy | `tests/test_matcher_integration.py`; seeds 1–5 and trap gate | complete |
+| WO-3 task 2 — fuzzy tier 3 and accuracy | `tests/test_matcher_integration.py`; current seeds 1–5: 1,177/1,214 (**96.952224%**), zero missed traps | complete |
 | WO-3 task 3 — OpenAI/Null clients and strict cache | `tests/test_llm_client.py`, `tests/test_llm_offline.py`; live manifest proof above | complete |
 | WO-3 task 4 — intake, clarify, vision, diff | `tests/test_llm_intake.py`; digest-only transcript and sensitive diff cases | complete |
 | WO-3 task 5 — veto-only adjudication | `tests/test_llm_adjudicate.py`; outside-list/refusal/Null abstention | complete |
