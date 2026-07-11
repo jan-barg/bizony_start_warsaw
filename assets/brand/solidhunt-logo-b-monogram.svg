@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" width="1280" height="360" viewBox="0 0 1280 360" role="img" aria-labelledby="title desc">
+  <title id="title">SolidHunt monogram logo</title>
+  <desc id="desc">A bright green square with a bold geometric S-shaped trail, followed by the SolidHunt wordmark.</desc>
+  <rect x="48" y="60" width="240" height="240" fill="#43F27E"/>
+  <path d="M101 111H235V145H143V164H215V198H143V217H235V251H101V184H173V178H101Z" fill="#080808"/>
+  <rect x="220" y="96" width="30" height="30" fill="#080808" transform="rotate(45 235 111)"/>
+  <text x="340" y="231" fill="#080808" font-family="Inter, Arial, Helvetica, sans-serif" font-size="152" font-weight="500" letter-spacing="-8">
+    <tspan>solid</tspan><tspan font-weight="750">hunt</tspan>
+  </text>
+</svg>
