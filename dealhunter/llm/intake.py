@@ -48,15 +48,89 @@ _INTAKE_SCHEMA: dict[str, Any] = {
         "draft": {
             "type": "object",
             "properties": {
-                "brief": {"type": "object", "additionalProperties": True},
-                "mandate": {"type": "object", "additionalProperties": True},
+                "brief": {
+                    "type": "object",
+                    "properties": {
+                        "product_query": {"type": ["string", "null"]},
+                        "colorway": {"type": ["string", "null"]},
+                        "style_code": {"type": ["string", "null"]},
+                        "size_eu": {"type": ["string", "number", "null"]},
+                        "condition": {"enum": ["NEW", "USED", None]},
+                        "exclude_kids": {"type": ["boolean", "null"]},
+                        "exclude_resellers": {"type": ["boolean", "null"]},
+                    },
+                    "required": [
+                        "product_query",
+                        "colorway",
+                        "style_code",
+                        "size_eu",
+                        "condition",
+                        "exclude_kids",
+                        "exclude_resellers",
+                    ],
+                    "additionalProperties": False,
+                },
+                "mandate": {
+                    "type": "object",
+                    "properties": {
+                        "mode": {"enum": ["IMMEDIATE", "MONITOR", None]},
+                        "cap_landed_eur": {"type": ["string", "number", "null"]},
+                        "need_within_ticks": {"type": ["integer", "null"]},
+                        "auto_buy": {
+                            "anyOf": [
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "enabled": {"type": ["boolean", "null"]},
+                                        "within_eur_of_target": {
+                                            "type": ["string", "number", "null"]
+                                        },
+                                        "require_stock_low": {"type": ["boolean", "null"]},
+                                        "require_trust_high": {"type": ["boolean", "null"]},
+                                        "require_colorway_confirmed": {
+                                            "type": ["boolean", "null"]
+                                        },
+                                    },
+                                    "required": [
+                                        "enabled",
+                                        "within_eur_of_target",
+                                        "require_stock_low",
+                                        "require_trust_high",
+                                        "require_colorway_confirmed",
+                                    ],
+                                    "additionalProperties": False,
+                                },
+                                {"type": "null"},
+                            ]
+                        },
+                        "allow_middlemen": {"type": ["boolean", "null"]},
+                        "geo_arbitrage": {"enum": ["NEVER", "ASK", "ALLOW", None]},
+                        "overcap_ask_band_pct": {"type": ["string", "number", "null"]},
+                        "alert_budget_per_week": {"type": ["integer", "null"]},
+                    },
+                    "required": [
+                        "mode",
+                        "cap_landed_eur",
+                        "need_within_ticks",
+                        "auto_buy",
+                        "allow_middlemen",
+                        "geo_arbitrage",
+                        "overcap_ask_band_pct",
+                        "alert_budget_per_week",
+                    ],
+                    "additionalProperties": False,
+                },
             },
             "required": ["brief", "mandate"],
             "additionalProperties": False,
         },
         "question_bank": {
             "type": "object",
-            "additionalProperties": {"type": "string"},
+            "properties": {
+                key: {"type": ["string", "null"]} for key in _MISSING_PRIORITY
+            },
+            "required": list(_MISSING_PRIORITY),
+            "additionalProperties": False,
         },
     },
     "required": ["draft", "question_bank"],
@@ -206,14 +280,22 @@ def _compile(
 ) -> tuple[Brief | None, Mandate | None]:
     if missing:
         return None, None
-    brief_data = {key: value for key, value in draft["brief"].items() if value is not None}
-    mandate_data = {key: value for key, value in draft["mandate"].items() if value is not None}
+    brief_data = _without_none(draft["brief"])
+    mandate_data = _without_none(draft["mandate"])
     mandate_data["mode"] = mandate_data.get("mode") or Mode.MONITOR
     mandate_data["expires_tick"] = start_tick + cfg.HORIZON
     try:
         return Brief.model_validate(brief_data), Mandate.model_validate(mandate_data)
     except ValueError as error:
         raise LLMProtocolError("provider draft failed mandatory model validation") from error
+
+
+def _without_none(value: dict[str, Any]) -> dict[str, Any]:
+    return {
+        key: _without_none(child) if isinstance(child, dict) else child
+        for key, child in value.items()
+        if child is not None
+    }
 
 
 def _flatten(value: Any, prefix: str = "") -> dict[str, Any]:
