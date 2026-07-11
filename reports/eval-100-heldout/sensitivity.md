@@ -41,7 +41,7 @@ The production `engine.run_monitor()` entry point remains incomplete. These are 
 
 ## Recommended pitch visuals
 
-- `plots/price-gap-comparison.svg`: focuses on €0–€30, where at least 90% of each policy's legitimate purchases fall; it separately reports every larger value and maximum.
+- `plots/price-gap-comparison.svg`: compares the complete legitimate-purchase distributions with Tukey box plots, showing only 12 percentile-spaced points per policy and reporting outlier counts and maxima separately.
 - `plots/price-gap-cdf.svg`: shows the share of legitimate purchases that stay within each distance from the optimum, avoiding a maximum-driven axis.
 - `plots/paired-outcomes.svg`: shows 29 SolidHunt wins, 28 ties, and 12 shopper wins across the 69 paired legitimate purchases.
 - `plots/shopper-sensitivity.svg`: shows that the price-quality and budget-safety result persists under both attentive and weekly shopper assumptions.

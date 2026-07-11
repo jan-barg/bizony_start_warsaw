@@ -279,54 +279,107 @@ def _quantile(values: list[float], fraction: float) -> float:
 
 
 def write_regret_comparison(path: Path, runs: list[RunEvaluation]) -> None:
-    """Show the typical distribution clearly while reporting every tail value."""
+    """Show standard box plots with a sparse, deterministic point sample."""
     series = _regret_series(runs)
-    focus_source = max((_quantile(values, 0.90) for _, _, values in series), default=1.0)
+    summaries = []
+    for label, color, values in series:
+        q1, med, q3 = (_quantile(values, fraction) for fraction in (0.25, 0.50, 0.75))
+        iqr = q3 - q1
+        lower_fence = q1 - 1.5 * iqr
+        upper_fence = q3 + 1.5 * iqr
+        lower_whisker = min(
+            (value for value in values if value >= lower_fence),
+            default=q1,
+        )
+        upper_whisker = max(
+            (value for value in values if value <= upper_fence),
+            default=q3,
+        )
+        outliers = [
+            value for value in values
+            if value < lower_whisker or value > upper_whisker
+        ]
+        summaries.append((
+            label,
+            color,
+            values,
+            q1,
+            med,
+            q3,
+            lower_whisker,
+            upper_whisker,
+            outliers,
+        ))
+    focus_source = max((row[7] for row in summaries), default=1.0)
     focus_limit = max(5, int(ceil(focus_source / 5)) * 5)
-    width, height = 1200, 640
-    left, top, plot_width = 260, 145, 850
-    lane_gap = 165
+    width, height = 1200, 580
+    left, top, plot_width = 275, 170, 835
+    lane_gap = 145
     lines = _svg_start(
         width,
         height,
         "Price gap from optimal by strategy",
-        f"Legitimate purchase gaps are shown on a focused zero-to-{focus_limit}-euro scale. Values beyond the scale are counted and their maxima are reported separately.",
+        "Horizontal Tukey box plots compare legitimate purchase gaps. The boxes and whiskers use every purchase; twelve evenly spaced non-outlier observations provide sparse distribution context.",
     )
     lines.append('<text x="42" y="48" class="title">How far was each purchase from the best possible price?</text>')
-    lines.append(f'<text x="42" y="73" class="subtitle">Typical 90% in focus · all values above €{focus_limit} reported in the tail strip</text>')
+    lines.append('<text x="42" y="73" class="subtitle">Box = middle 50% · line = median · whiskers = non-outlier range · all purchases included</text>')
     for value in range(0, focus_limit + 1, 5):
         x = left + plot_width * value / focus_limit
-        lines.append(f'<line x1="{x:.1f}" y1="{top-42}" x2="{x:.1f}" y2="{top+lane_gap+54}" stroke="{BORDER}"/>')
-        lines.append(f'<text x="{x:.1f}" y="{top+lane_gap+82}" text-anchor="middle" class="small">€{value}</text>')
-    for lane, (label, color, values) in enumerate(series):
+        lines.append(f'<line x1="{x:.1f}" y1="{top-62}" x2="{x:.1f}" y2="{top+lane_gap+58}" stroke="{BORDER}"/>')
+        lines.append(f'<text x="{x:.1f}" y="{top+lane_gap+83}" text-anchor="middle" class="small">€{value}</text>')
+    for lane, (
+        label,
+        color,
+        values,
+        q1,
+        med,
+        q3,
+        lower_whisker,
+        upper_whisker,
+        outliers,
+    ) in enumerate(summaries):
         y = top + lane * lane_gap
-        visible = [value for value in values if value <= focus_limit]
-        tail = [value for value in values if value > focus_limit]
-        q1, med, q3 = (_quantile(values, fraction) for fraction in (0.25, 0.50, 0.75))
-        avg = mean(values) if values else 0.0
-        lines.append(f'<text x="{left-24}" y="{y-7}" text-anchor="end" class="label">{escape(label)}</text>')
+        lines.append(f'<text x="{left-24}" y="{y-6}" text-anchor="end" class="label">{escape(label)}</text>')
         lines.append(f'<text x="{left-24}" y="{y+17}" text-anchor="end" class="small">n={len(values)}</text>')
-        for index, value in enumerate(visible):
+        non_outliers = [
+            value for value in values
+            if lower_whisker <= value <= upper_whisker
+        ]
+        sample_count = min(12, len(non_outliers))
+        sample_indices = (
+            [round(index * (len(non_outliers) - 1) / (sample_count - 1)) for index in range(sample_count)]
+            if sample_count > 1 else [0] if sample_count else []
+        )
+        for index, sample_index in enumerate(sample_indices):
+            value = non_outliers[sample_index]
             x = left + value / focus_limit * plot_width
-            jitter = ((index * 19) % 37 - 18) * 1.15
+            dot_y = y - 47 + (index % 2) * 10
             stroke = INK if color == ENGINE else PAPER
-            lines.append(f'<circle cx="{x:.1f}" cy="{y+jitter:.1f}" r="4.6" fill="{color}" fill-opacity="0.58" stroke="{stroke}" stroke-width=".8"/>')
-        q1_x = left + min(q1, focus_limit) / focus_limit * plot_width
-        med_x = left + min(med, focus_limit) / focus_limit * plot_width
-        q3_x = left + min(q3, focus_limit) / focus_limit * plot_width
-        avg_x = left + min(avg, focus_limit) / focus_limit * plot_width
-        lines.append(f'<line x1="{q1_x:.1f}" y1="{y+38}" x2="{q3_x:.1f}" y2="{y+38}" stroke="{INK}" stroke-width="8" stroke-linecap="square"/>')
-        lines.append(f'<line x1="{med_x:.1f}" y1="{y+27}" x2="{med_x:.1f}" y2="{y+49}" stroke="{PAPER}" stroke-width="3"/>')
-        points = f"{avg_x:.1f},{y+27:.1f} {avg_x+9:.1f},{y+38:.1f} {avg_x:.1f},{y+49:.1f} {avg_x-9:.1f},{y+38:.1f}"
-        lines.append(f'<polygon points="{points}" fill="{color}" stroke="{INK}" stroke-width="1"/>')
-        lines.append(f'<text x="{left}" y="{y+69}" class="small">median €{med:.2f} · mean €{avg:.2f} · middle 50% €{q1:.2f}–€{q3:.2f}</text>')
-        tail_text = f'{len(tail)} above €{focus_limit} · max €{max(tail):.2f}' if tail else f'0 above €{focus_limit}'
-        lines.append(f'<text x="{left+plot_width}" y="{y+69}" text-anchor="end" class="small">{tail_text}</text>')
-    engine_median = median(series[0][2]) if series[0][2] else 0.0
-    user_median = median(series[1][2]) if series[1][2] else 0.0
-    lines.append(f'<rect x="42" y="{height-94}" width="{width-84}" height="52" rx="8" fill="{BRAND}"/>')
-    lines.append(f'<text x="64" y="{height-61}" class="metric">Median gap: SolidHunt €{engine_median:.2f} · shopper €{user_median:.2f}</text>')
-    lines.append(f'<text x="{width-64}" y="{height-61}" text-anchor="end" class="label">Lower is better</text>')
+            lines.append(f'<circle cx="{x:.1f}" cy="{dot_y:.1f}" r="4" fill="{color}" fill-opacity=".68" stroke="{stroke}" stroke-width=".8"/>')
+        lower_x = left + lower_whisker / focus_limit * plot_width
+        q1_x = left + q1 / focus_limit * plot_width
+        med_x = left + med / focus_limit * plot_width
+        q3_x = left + q3 / focus_limit * plot_width
+        upper_x = left + upper_whisker / focus_limit * plot_width
+        box_fill = BRAND if color == ENGINE else SOFT
+        lines.append(f'<line x1="{lower_x:.1f}" y1="{y}" x2="{upper_x:.1f}" y2="{y}" stroke="{INK}" stroke-width="3"/>')
+        lines.append(f'<line x1="{lower_x:.1f}" y1="{y-17}" x2="{lower_x:.1f}" y2="{y+17}" stroke="{INK}" stroke-width="3"/>')
+        lines.append(f'<line x1="{upper_x:.1f}" y1="{y-17}" x2="{upper_x:.1f}" y2="{y+17}" stroke="{INK}" stroke-width="3"/>')
+        lines.append(f'<rect x="{q1_x:.1f}" y="{y-27}" width="{max(q3_x-q1_x, 1):.1f}" height="54" fill="{box_fill}" stroke="{INK}" stroke-width="2"/>')
+        lines.append(f'<line x1="{med_x:.1f}" y1="{y-27}" x2="{med_x:.1f}" y2="{y+27}" stroke="{INK}" stroke-width="5"/>')
+        lines.append(f'<text x="{left}" y="{y+53}" class="small">Q1 €{q1:.2f} · median €{med:.2f} · Q3 €{q3:.2f}</text>')
+        outlier_text = (
+            f'{len(outliers)} Tukey outliers · max €{max(outliers):.2f}'
+            if outliers else "0 Tukey outliers"
+        )
+        lines.append(f'<text x="{left+plot_width}" y="{y+53}" text-anchor="end" class="small">{outlier_text}</text>')
+    engine_median = summaries[0][4] if summaries else 0.0
+    user_median = summaries[1][4] if len(summaries) > 1 else 0.0
+    improvement = 100 * (user_median - engine_median) / user_median if user_median else 0.0
+    lines.append(f'<text x="{left+plot_width/2}" y="{height-93}" text-anchor="middle" class="small">12 percentile-spaced non-outlier observations shown per policy; box statistics use the complete legitimate-purchase sample.</text>')
+    lines.append(f'<rect x="42" y="{height-74}" width="{width-84}" height="50" rx="8" fill="{BRAND}"/>')
+    lines.append(f'<text x="64" y="{height-42}" class="metric">SolidHunt median gap is {improvement:.0f}% lower</text>')
+    lines.append(f'<text x="{width-64}" y="{height-42}" text-anchor="end" class="label">€{engine_median:.2f} vs €{user_median:.2f}</text>')
     lines.append("</svg>")
     _write(path, "\n".join(lines) + "\n")
 
