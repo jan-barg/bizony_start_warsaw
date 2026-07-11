@@ -8,6 +8,7 @@ from dealhunter.core.enums import Action, HuntStatus, Mode
 from dealhunter.core.models import Brief, Hunt, Mandate, World, canonical_json
 from dealhunter.engine.loop import run_immediate
 from dealhunter.llm.client import NullClient
+from dealhunter.world.generate import generate_world
 
 
 ROOT = Path(__file__).resolve().parent.parent
@@ -46,3 +47,25 @@ def test_run_immediate_returns_deterministic_buy():
 def test_run_immediate_rejects_monitor_mandate():
     with pytest.raises(ValueError, match="IMMEDIATE"):
         run_immediate(immediate_hunt(Mode.MONITOR), world(), Constants(), NullClient())
+
+
+def test_generated_seed_42_buys_with_exact_deterministic_receipt(
+    tmp_path, monkeypatch
+):
+    monkeypatch.chdir(tmp_path)
+    cfg = Constants()
+    generated = generate_world(42, cfg)
+    current_hunt = immediate_hunt()
+    current_hunt.brief.size_eu = D("42")
+
+    first = run_immediate(current_hunt, generated, cfg, NullClient())
+    second = run_immediate(immediate_hunt().model_copy(
+        update={"brief": current_hunt.brief}
+    ), generate_world(42, cfg), cfg, NullClient())
+
+    assert first.action == Action.BUY
+    assert first.chosen is not None
+    assert sum(
+        line.amount_eur for line in first.chosen.quote.line_items
+    ) == first.chosen.quote.landed_eur
+    assert canonical_json(first) == canonical_json(second)

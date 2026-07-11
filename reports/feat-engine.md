@@ -13,7 +13,7 @@
   selection, gray-route removal/reselection, deterministic near misses, and
   canonical receipts.
 - Live S1 assertions and violation tests for invariants 1–5 and 7.
-- `run_immediate` and an offline `mini_world` demo.
+- `run_immediate` and an offline generated-world seed-42 demo.
 - Focused customs, landed, route, trust, policy, and immediate integration tests.
 
 ## Intentionally deferred
@@ -56,6 +56,14 @@ uv sync --extra dev
 .venv/bin/python scripts/demo_immediate.py
 ```
 
-Final suite result: 66 passed; only V9 is xfailed because monitor stopping is
-the next planned slice. Two demo runs produced identical SHA-256:
-`102e7eb3018c737283b4066daee85527213657f4e5144e215f49259bcdd4273d`.
+At branch handoff, 66 tests passed and only V9 was xfailed because monitor
+stopping is the next planned slice.
+
+## S1 integration on `develop`
+
+- Person A's world branch was merged before the engine branch.
+- The demo now uses `generate_world(42, Constants())` and a hardcoded seed-42
+  catalog brief (Nike Dunk Low `DD1391-100`, EU 42).
+- The generated-world result is an E1 BUY at €133.63 with exact line items.
+- Two sequential demo runs produced identical SHA-256:
+  `a81174631adb82ad39513d098f8d0c9602f6dcbcbf58b97261c54fae75d5f18c`.

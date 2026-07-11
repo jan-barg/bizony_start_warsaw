@@ -3,6 +3,7 @@ from __future__ import annotations
 
 import hashlib
 import os
+import re
 import sqlite3
 from collections import Counter
 from decimal import Decimal
@@ -148,5 +149,10 @@ def test_hidden_truth_and_dossier_never_leak_into_runtime_modules() -> None:
     for folder in (root / "dealhunter" / "engine", root / "dealhunter" / "llm"):
         for source in folder.glob("*.py"):
             text = source.read_text()
-            assert not any(label in text for label in forbidden_labels), source
+            # Hidden labels are forbidden as identifiers. The public
+            # RouteQuote estimate ending in ``_est`` is intentionally legal.
+            assert not any(
+                re.search(rf"\b{re.escape(label)}\b", text)
+                for label in forbidden_labels
+            ), source
             assert "world.dossier" not in text and "world import dossier" not in text
