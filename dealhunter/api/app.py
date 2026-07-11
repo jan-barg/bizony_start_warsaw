@@ -1,10 +1,11 @@
 """FastAPI surface — spec §8. Branch feat/api-ui (Work Order 4).
 
-Until sync point S2 every endpoint is backed by `FixtureEngine`, which replays
-`fixtures/receipts_demo.jsonl` and fakes intake with a deterministic regex
-parser — NO LLM, NO real engine. The endpoint signatures and event envelopes
-are the real contract (§8); at S2 the FixtureEngine is swapped for the real
-engine behind the same shapes and the UI does not change.
+HYBRID backend (post-S1): worlds and IMMEDIATE mode run on the REAL engine
+(`generate_world` + `run_immediate` on generated worlds); intake remains the
+deterministic regex fake (real LLM intake is Work Order 3) and the MONITOR
+SSE stream still replays `fixtures/receipts_demo.jsonl` — the real monitor
+loop (stopping + asks + orders) is feat/engine's next slice. The endpoint
+signatures and event envelopes never change across these swaps (§8).
 
 The UI is a pure consumer of receipts + events: no decision logic client-side.
 """
@@ -30,6 +31,21 @@ from ..core.models import (
     Ask, AutoBuy, Brief, Hunt, IntakeResult, Mandate, Receipt, World,
     canonical_json, quote_hash,
 )
+from ..engine.loop import run_immediate as engine_run_immediate
+from ..llm.client import NullClient
+from ..world.dossier import render_dossier
+from ..world.generate import generate_world
+
+# Generated worlds are deterministic and expensive-ish (~24k rows) — cache them
+# at module level so tests resetting FixtureEngine don't regenerate per test.
+_GEN_WORLDS: dict[int, World] = {}
+DEFAULT_WORLD_ID = "w_42"
+
+
+def _generated_world(seed: int) -> World:
+    if seed not in _GEN_WORLDS:
+        _GEN_WORLDS[seed] = generate_world(seed, CFG)
+    return _GEN_WORLDS[seed]
 
 ROOT = Path(__file__).resolve().parent.parent.parent
 CFG = Constants()
@@ -76,6 +92,7 @@ class FixtureEngine:
         self.immediate_receipt = next(r for r in receipts if r.action == Action.ESCALATE_NONE_FOUND)
         self.intakes: dict[str, dict[str, Any]] = {}
         self.hunts: dict[str, Hunt] = {}
+        self.hunt_world: dict[str, str] = {}   # hunt_id → world_id (Hunt model is frozen core)
         self.asks: dict[str, Ask] = {}
         self.ask_events: dict[str, asyncio.Event] = {}
         self.receipts_by_hunt: dict[str, list[Receipt]] = {}
@@ -189,7 +206,7 @@ def _hunt(hunt_id: str) -> Hunt:
 # ---------------------------------------------------------------------------
 
 class IntakeBody(BaseModel):
-    world_id: str = "w_fixture"
+    world_id: str = DEFAULT_WORLD_ID   # generated seed-42 world; "w_fixture" still accepted
     input: dict[str, str]              # {"text": ...} (image_b64 at S2+)
     mode: str | None = None
 
@@ -212,16 +229,28 @@ class EvalBody(BaseModel):
 # Worlds
 # ---------------------------------------------------------------------------
 
+def _resolve_world(world_id: str) -> World:
+    if world_id == "w_fixture":
+        return ENGINE.world
+    if world_id.startswith("w_") and world_id[2:].isdigit():
+        return _generated_world(int(world_id[2:]))
+    raise HTTPException(404, f"unknown world {world_id}")
+
+
 @app.post("/worlds")
 def create_world(body: dict | None = None) -> dict[str, Any]:
-    w = ENGINE.world
-    return {"world_id": "w_fixture", "dossier_url": "/worlds/w_fixture/dossier",
+    seed = (body or {}).get("seed", 42)
+    w = _generated_world(int(seed))
+    world_id = f"w_{seed}"
+    return {"world_id": world_id, "dossier_url": f"/worlds/{world_id}/dossier",
             "trap_count": len(w.traps)}
 
 
 @app.get("/worlds/{world_id}/dossier")
 def dossier(world_id: str) -> dict[str, str]:
-    w = ENGINE.world
+    w = _resolve_world(world_id)
+    if world_id != "w_fixture":
+        return {"markdown": render_dossier(w, CFG)}     # the real judge-facing dossier
     lines = [f"# World dossier — fixture (seed {w.seed})", "",
              f"{len(w.listings)} listings · {len(w.vendors)} vendors · {len(w.traps)} planted traps", ""]
     for t in w.traps:
@@ -237,14 +266,16 @@ def dossier(world_id: str) -> dict[str, str]:
 
 @app.post("/intake")
 def intake(body: IntakeBody) -> dict[str, Any]:
+    _resolve_world(body.world_id)      # validate early; generates + caches if needed
     ENGINE._n_intake += 1
     intake_id = f"i_{ENGINE._n_intake:03d}"
     transcript = [body.input.get("text", "")]
     result = ENGINE.parse(transcript)
-    session = {"transcript": transcript, "result": result, "diff": [], "hunt_id": None}
+    session = {"transcript": transcript, "result": result, "diff": [], "hunt_id": None,
+               "world_id": body.world_id}
     ENGINE.intakes[intake_id] = session
     if result.status == IntakeStatus.OK:
-        session["hunt_id"] = _create_hunt(result)
+        session["hunt_id"] = _create_hunt(result, body.world_id)
     return _intake_payload(intake_id)
 
 
@@ -260,15 +291,16 @@ def clarify(intake_id: str, body: ClarifyBody) -> dict[str, Any]:
     s["result"] = ENGINE.parse(s["transcript"])          # full re-parse (§7.1)
     s["diff"] = FixtureEngine.mandate_diff(prev, s["result"])
     if s["result"].status == IntakeStatus.OK:
-        s["hunt_id"] = _create_hunt(s["result"])
+        s["hunt_id"] = _create_hunt(s["result"], s.get("world_id", DEFAULT_WORLD_ID))
     return _intake_payload(intake_id)
 
 
-def _create_hunt(result: IntakeResult) -> str:
+def _create_hunt(result: IntakeResult, world_id: str) -> str:
     ENGINE._n_hunt += 1
     hid = make_hunt_id(0, ENGINE._n_hunt)
     ENGINE.hunts[hid] = Hunt(id=hid, brief=result.brief, mandate=result.mandate,
                              status=HuntStatus.DRAFT, start_tick=0)
+    ENGINE.hunt_world[hid] = world_id
     ENGINE.receipts_by_hunt[hid] = []
     return hid
 
@@ -306,15 +338,32 @@ def run_immediate(hunt_id: str) -> dict[str, Any]:
     h = _hunt(hunt_id)
     if h.status != HuntStatus.CONFIRMED:
         raise HTTPException(409, "confirm the mandate first")
-    r = ENGINE.immediate_receipt.model_copy(update={"hunt_id": hunt_id})
+
+    world_id = ENGINE.hunt_world.get(hunt_id, DEFAULT_WORLD_ID)
+    if world_id == "w_fixture":
+        r = ENGINE.immediate_receipt.model_copy(update={"hunt_id": hunt_id})
+    else:
+        # REAL engine on a generated world. The endpoint IS immediate execution,
+        # so the run copy carries an IMMEDIATE mandate regardless of how the
+        # hunt was parsed; the stored hunt is not mutated.
+        run_hunt = h.model_copy(update={
+            "status": HuntStatus.RUNNING,
+            "mandate": h.mandate.model_copy(update={"mode": Mode.IMMEDIATE}),
+        })
+        r = engine_run_immediate(run_hunt, _resolve_world(world_id), CFG, NullClient())
+        r = r.model_copy(update={"hunt_id": hunt_id})
+
     ENGINE.receipts_by_hunt[hunt_id].append(r)
+    chosen = json.loads(r.chosen.model_dump_json()) if r.action == Action.BUY and r.chosen else None
+    if r.action == Action.BUY:
+        h.status = HuntStatus.PURCHASED
     near = [{"listing_id": e.quote.listing_id, "landed_eur": str(e.quote.landed_eur),
              "reasons": e.gate_failures or ["qualifies"], "eligibility": e.eligibility.value,
              "approvable": e.eligibility.value == "OVER_CAP_BAND"}
             for e in r.considered]
-    return {"action": r.action.value, "chosen": None, "near_misses": near,
+    return {"action": r.action.value, "chosen": chosen, "near_misses": near,
             "receipt_id": r.id, "receipt": json.loads(r.model_dump_json()),
-            "handoff": "switch_to_monitor"}
+            "handoff": None if r.action == Action.BUY else "switch_to_monitor"}
 
 
 @app.post("/hunts/{hunt_id}/start")
@@ -496,4 +545,7 @@ def eval_report(run_id: str) -> dict[str, str]:
 
 @app.get("/config")
 def config() -> dict[str, Any]:
-    return {"tick_ms": CFG.TICK_MS, "horizon": CFG.HORIZON, "backend": "fixture"}
+    return {"tick_ms": CFG.TICK_MS, "horizon": CFG.HORIZON, "backend": "hybrid",
+            "real": ["worlds", "dossier", "run_immediate"],
+            "fixture": ["intake_parser", "monitor_events"],
+            "default_world": DEFAULT_WORLD_ID}

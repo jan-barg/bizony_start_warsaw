@@ -118,8 +118,11 @@ class TestHuntLifecycle:
         r = client.post("/intake", json={"input": {"text": "nike dunk 43 under €80"}})
         assert client.post(f"/hunts/{r.json()['hunt_id']}/run_immediate").status_code == 409
 
-    def test_run_immediate_shape(self, client):
-        hunt_id = make_confirmed_hunt(client)
+    def test_run_immediate_fixture_path_shape(self, client):
+        r = client.post("/intake", json={"world_id": "w_fixture",
+                                         "input": {"text": "nike dunk panda size 43 under €80"}})
+        hunt_id = r.json()["hunt_id"]
+        client.post(f"/hunts/{hunt_id}/confirm")
         body = client.post(f"/hunts/{hunt_id}/run_immediate").json()
         assert body["action"] == "ESCALATE_NONE_FOUND"
         assert body["handoff"] == "switch_to_monitor"
@@ -128,6 +131,23 @@ class TestHuntLifecycle:
         assert {"listing_id", "landed_eur", "reasons", "eligibility", "approvable"} <= set(nm)
         # the receipt landed in the paged store too
         assert client.get(f"/hunts/{hunt_id}/receipts").json()
+
+    def test_run_immediate_real_engine_buy(self, client):
+        """Post-S1 hybrid: default world is the REAL generated seed-42 world and
+        run_immediate is the REAL engine (mirrors scripts/demo_immediate.py)."""
+        r = client.post("/intake", json={"input": {"text": "nike dunk panda size 42 under €150 now"}})
+        assert r.json()["status"] == "OK"
+        hunt_id = r.json()["hunt_id"]
+        client.post(f"/hunts/{hunt_id}/confirm")
+        body = client.post(f"/hunts/{hunt_id}/run_immediate").json()
+        assert body["action"] == "BUY"
+        assert body["handoff"] is None
+        chosen = body["chosen"]
+        assert chosen is not None and chosen["purchase_eligible"] is True
+        lines = chosen["quote"]["line_items"]
+        from decimal import Decimal as D
+        assert sum(D(li["amount_eur"]) for li in lines) == D(chosen["quote"]["landed_eur"])
+        assert client.get(f"/hunts/{hunt_id}").json()["status"] == "PURCHASED"
 
     def test_revoke(self, client):
         hunt_id = make_confirmed_hunt(client)
@@ -235,11 +255,18 @@ async def test_sse_decline_path_continues():
 # ---------------------------------------------------------------- misc surface
 
 class TestMisc:
-    def test_world_and_dossier(self, client):
+    def test_real_world_and_dossier(self, client):
         w = client.post("/worlds", json={"seed": 42}).json()
-        assert w["trap_count"] == 2
+        assert w["world_id"] == "w_42" and w["trap_count"] > 10
         md = client.get(f"/worlds/{w['world_id']}/dossier").json()["markdown"]
+        assert len(md) > 1000, "the real generated dossier, not the stub"
+
+    def test_fixture_dossier_still_served(self, client):
+        md = client.get("/worlds/w_fixture/dossier").json()["markdown"]
         assert "Trap: bait" in md and "Correct behavior" in md
+
+    def test_unknown_world_404(self, client):
+        assert client.get("/worlds/w_nope/dossier").status_code == 404
 
     def test_eval_roundtrip(self, client):
         run = client.post("/eval/run", json={}).json()
@@ -248,4 +275,5 @@ class TestMisc:
 
     def test_config(self, client):
         body = client.get("/config").json()
-        assert body["backend"] == "fixture" and body["tick_ms"] == 300
+        assert body["backend"] == "hybrid" and body["tick_ms"] == 300
+        assert "run_immediate" in body["real"] and "monitor_events" in body["fixture"]
