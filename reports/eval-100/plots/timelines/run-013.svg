@@ -1,0 +1,20 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="480" viewBox="0 0 1200 480" role="img" aria-labelledby="title desc">
+<title id="title">Timeline run-013</title>
+<desc id="desc">Full 90-day legitimate landed-price curve with cap and purchase markers.</desc>
+<rect width="1200" height="480" fill="#FFFFFF"/>
+<style>text{font-family:Inter,Arial,sans-serif;fill:#080808} .small{font-size:11px} .label{font-size:13px;font-weight:600} .title{font-size:22px;font-weight:700}</style>
+<text x="48" y="40" class="title">run-013 · M990GL6 · EU 44</text>
+<text x="48" y="66" class="label">Cap €198.00 · optimum €167.32 on day 26</text>
+<rect x="70.0" y="95.0" width="1080.0" height="310.0" fill="#F4F6F3" stroke="#D8DDD9"/>
+<line x1="70.0" y1="171.3" x2="1150.0" y2="171.3" stroke="#C52A22" stroke-width="1" stroke-dasharray="4 3"/>
+<path d="M70.0,174.7 L82.1,190.0 L94.3,173.3 L106.4,173.2 L118.5,157.6 L130.7,141.0 L142.8,127.2 L154.9,116.4 L167.1,139.2 L179.2,149.7 L191.3,172.0 L203.5,184.5 L215.6,206.0 L227.8,199.4 L239.9,186.8 L252.0,170.9 L264.2,171.5 L276.3,169.5 L288.4,162.9 L300.6,167.1 L312.7,178.5 L324.8,151.4 L337.0,176.3 L349.1,154.6 L361.2,175.6 L373.4,167.3 L385.5,383.6 L397.6,153.5 L409.8,169.3 L421.9,151.3 L434.0,138.9 L446.2,153.6 L458.3,126.3 L470.4,120.7 L482.6,137.6" fill="none" stroke="#59615B" stroke-width="1.5"/>
+<polygon points="385.5,377.6 391.5,383.6 385.5,389.6 379.5,383.6" fill="#2859C5" stroke="#FFFFFF" stroke-width="1"/>
+<rect x="64.0" y="168.7" width="12.0" height="12.0" fill="#A76100" stroke="#FFFFFF" stroke-width="1"/>
+<text x="70.0" y="430" text-anchor="middle" class="small">day 0</text>
+<text x="434.0" y="430" text-anchor="middle" class="small">day 30</text>
+<text x="798.1" y="430" text-anchor="middle" class="small">day 60</text>
+<text x="1150.0" y="430" text-anchor="middle" class="small">day 89</text>
+<text x="70" y="460" class="small" fill="#137A3D">● SolidHunt: miss</text>
+<text x="350" y="460" class="small" fill="#A76100">■ Casual shopper: day 0, €197.50</text>
+<text x="680" y="460" class="small" fill="#2859C5">◆ Optimal: day 26, €167.32</text>
+</svg>
