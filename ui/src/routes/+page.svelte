@@ -15,6 +15,8 @@
 	let error = $state('');
 	let structured = $state(false);
 	let form = $state({ product_query: '', style_code: '', size_eu: '', cap_landed_eur: '' });
+	let imageB64 = $state(null);
+	let imageName = $state('');
 
 	function onResult(res) {
 		if (res.status === 'NEEDS_INFO') {
@@ -39,7 +41,7 @@
 		chat = [{ role: 'user', lines: [finalText] }];
 		intakeId = null;
 		try {
-			onResult(await postIntake(finalText, mode));
+			onResult(await postIntake(finalText, mode, imageB64));
 		} catch (e) {
 			if (e.status === 503) {
 				structured = true;
@@ -50,6 +52,20 @@
 		} finally {
 			busy = false;
 		}
+	}
+
+	async function attachScreenshot(event) {
+		const file = event.currentTarget.files?.[0];
+		if (!file) {
+			imageB64 = null;
+			imageName = '';
+			return;
+		}
+		const bytes = new Uint8Array(await file.arrayBuffer());
+		let binary = '';
+		for (const byte of bytes) binary += String.fromCharCode(byte);
+		imageB64 = btoa(binary);
+		imageName = file.name;
 	}
 
 	async function submitStructured() {
@@ -126,6 +142,11 @@
 			{busy ? 'Working…' : 'Start the hunt'}
 		</button>
 	</div>
+	<label class="screenshot small">
+		Screenshot <span class="muted">(PNG, JPEG, or WebP; optional)</span>
+		<input type="file" accept="image/png,image/jpeg,image/webp" onchange={attachScreenshot} />
+		{#if imageName}<span class="muted">Attached: {imageName}</span>{/if}
+	</label>
 </div>
 
 {#if error}
@@ -223,6 +244,11 @@
 		align-items: center;
 		gap: 8px;
 		font-size: 14px;
+	}
+
+	.screenshot {
+		display: grid;
+		gap: 5px;
 	}
 
 	.chat-line {

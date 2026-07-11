@@ -731,6 +731,6 @@ def eval_report(run_id: str) -> dict[str, str]:
 @app.get("/config")
 def config() -> dict[str, Any]:
     return {"tick_ms": CFG.TICK_MS, "horizon": CFG.HORIZON, "backend": "hybrid",
-            "real": ["worlds", "dossier", "run_immediate"],
-            "fixture": ["intake_parser", "monitor_events"],
+            "real": ["worlds", "dossier", "run_immediate", "intake", "narration"],
+            "fixture": ["monitor_events"],
             "default_world": DEFAULT_WORLD_ID}
