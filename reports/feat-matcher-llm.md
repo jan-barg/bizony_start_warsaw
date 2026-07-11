@@ -140,3 +140,20 @@ owns the engine correction.
 Person D is **not yet complete** under the post-merge checklist. WO-3 tasks 1–6
 are complete; task 7 and the S2/S3 cross-person acceptance gates remain blocked
 and must not be checked off without passing evidence.
+
+### Post-merge execution log
+
+- Repeated `git fetch origin` checks kept `origin/develop` at `1fed858`; the feature branch was fast-forwarded to that commit before new work.
+- Person B's S2 work is currently only on `origin/feat/engine-s2` at `50265fa`; Person C's latest work is only on `origin/personc` at `895f7c2` and does not wire LLM intake/narration.
+- Full default `pytest -q` is green (one expected V9 xfail). Person D-focused pytest, Ruff, and mypy gates are green.
+- Full Ruff remains red with 6 pre-existing A/C-owned findings; full mypy remains red with 15 pre-existing A/B/C-owned findings. Exact ownership is recorded in `WORK-ORDER-STATUS.md`.
+- Explicit matcher integration run: 5 passed and the new run-scoped memo test failed at the expected current `run_monitor` stub.
+- Current generated-world proof: 1,177/1,214 non-trap identities correct (96.952224%), zero missed matcher traps.
+- No new live OpenAI call was made: the existing reviewed manifest/cache is already proven, while the exact seed-42 final-demo request set is not yet frozen. Human approval for necessary final calls is available but must be reconfirmed immediately before warming.
+
+Local post-merge commits (not pushed):
+
+- `89cf40f` — `docs(llm): define post-merge completion gates`
+- `bd905e3` — `test(matcher): require run-scoped monitor memo`
+- `39267d0` — `docs(llm): correct post-merge audit evidence`
+- `a674258` — `docs(llm): reconcile final S3 obligations`
