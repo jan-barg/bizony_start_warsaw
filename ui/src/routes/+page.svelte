@@ -4,9 +4,16 @@
 	// returns NEEDS_INFO the same composer becomes the reply box and each send
 	// POSTs /intake/{id}/clarify, chat-style, until status is OK.
 	import { goto } from '$app/navigation';
+	import { fly, slide } from 'svelte/transition';
 	import { postIntake, postClarify } from '$lib/api.js';
 	import { intakeByHunt, stash } from '$lib/stores.js';
 	import SoftAurora from '$lib/components/SoftAurora.svelte';
+
+	// brand: respect reduced motion — collapse every morph to an instant swap
+	const reducedMotion =
+		typeof window !== 'undefined' &&
+		window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+	const dur = (ms) => (reducedMotion ? 0 : ms);
 
 	let text = $state('');
 	let mode = $state('MONITOR');
@@ -106,7 +113,7 @@
 	<header class="hero">
 		<h1>What are we hunting?</h1>
 		{#if !started}
-			<p class="muted sub">
+			<p class="muted sub" transition:slide={{ duration: dur(320) }}>
 				Name the product and your all-in price ceiling. SolidHunt watches, verifies,
 				and buys — never breaking your mandate.
 			</p>
@@ -116,7 +123,7 @@
 	{#if chat.length}
 		<div class="chat" aria-live="polite">
 			{#each chat as msg, i (i)}
-				<div class="bubble {msg.role}">
+				<div class="bubble {msg.role}" in:fly={{ y: 14, duration: dur(280) }}>
 					{#each msg.lines as line (line)}
 						<p class="chat-line">{line}</p>
 					{/each}
@@ -144,7 +151,17 @@
 
 		<div class="composer-row">
 			{#if !started}
-				<div class="mode-toggle" role="group" aria-label="Hunt mode">
+				<div
+					class="mode-toggle"
+					role="group"
+					aria-label="Hunt mode"
+					transition:slide={{ axis: 'x', duration: dur(280) }}
+				>
+					<span
+						class="slider"
+						aria-hidden="true"
+						style:transform="translateX({mode === 'MONITOR' ? '0%' : '100%'})"
+					></span>
 					<button
 						type="button"
 						class:active={mode === 'MONITOR'}
@@ -162,10 +179,10 @@
 						Buy now
 					</button>
 				</div>
-				<span class="muted small hint">{modeHint}</span>
-			{:else}
-				<span class="muted small hint">SolidHunt needs a little more to hunt safely.</span>
 			{/if}
+			<span class="muted small hint">
+				{started ? 'SolidHunt needs a little more to hunt safely.' : modeHint}
+			</span>
 
 			<button
 				type="button"
@@ -193,7 +210,7 @@
 	</div>
 
 	{#if !started}
-		<div class="examples">
+		<div class="examples" transition:slide={{ duration: dur(300) }}>
 			{#each examples as example (example)}
 				<button type="button" class="chip" onclick={() => useExample(example)}>
 					{example}
@@ -221,11 +238,9 @@
 		gap: 20px;
 	}
 
-	.home.started {
-		justify-content: flex-start;
-		padding-top: 24px;
-	}
-
+	/* .started never re-anchors the layout — the page stays centered and every
+	   height change (sub/chips collapsing, bubbles arriving) is animated, so
+	   the whole view morphs instead of snapping */
 	.hero {
 		text-align: center;
 	}
@@ -235,6 +250,9 @@
 		line-height: 1;
 		margin: 0 0 12px;
 		letter-spacing: -0.02em;
+		transition:
+			font-size 0.35s ease,
+			margin 0.35s ease;
 	}
 
 	.started .hero h1 {
@@ -290,13 +308,27 @@
 	}
 
 	.mode-toggle {
-		display: inline-flex;
+		position: relative;
+		display: grid;
+		grid-template-columns: 1fr 1fr; /* equal cells so the slider maps 0%/100% */
 		border: 1px solid var(--border);
 		border-radius: var(--radius-control);
 		overflow: hidden;
+		flex-shrink: 0;
+	}
+
+	.mode-toggle .slider {
+		position: absolute;
+		top: 0;
+		left: 0;
+		width: 50%;
+		height: 100%;
+		background: var(--brand-solid);
+		transition: transform 0.25s cubic-bezier(0.3, 0.9, 0.4, 1);
 	}
 
 	.mode-toggle button {
+		position: relative; /* above the slider */
 		border: none;
 		border-radius: 0;
 		background: transparent;
@@ -304,10 +336,11 @@
 		font-size: 14px;
 		font-weight: 600;
 		padding: 6px 14px;
+		white-space: nowrap;
+		transition: color 0.25s ease;
 	}
 
 	.mode-toggle button.active {
-		background: var(--brand-solid);
 		color: var(--ink); /* black on Solid Green, per brand */
 	}
 
@@ -366,6 +399,14 @@
 	@media (max-width: 560px) {
 		.hint {
 			display: none;
+		}
+	}
+
+	@media (prefers-reduced-motion: reduce) {
+		.hero h1,
+		.mode-toggle .slider,
+		.mode-toggle button {
+			transition: none;
 		}
 	}
 </style>
