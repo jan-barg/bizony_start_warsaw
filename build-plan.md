@@ -1,4 +1,4 @@
-# Deal Hunter — Build Flow & Branch Plan
+# SolidHunt — Build Flow & Branch Plan
 
 *Companion to implementation-spec.md v1.3 (§ references point there). Four people, one weekend. The ordering rule: **contracts first, world and money-math in parallel, judgment on top, chrome last.***
 

@@ -1,4 +1,4 @@
-# Deal Hunter — Project Spec (v2.2)
+# SolidHunt — Project Spec (v2.2)
 
 *An agentic shopping assistant that watches a simulated market, computes true landed cost — customs included — and spends real (simulated) money only inside a mandate it provably cannot break.*
 

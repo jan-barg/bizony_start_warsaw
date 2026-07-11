@@ -1,4 +1,4 @@
-# Deal Hunter — Agent Build Orders
+# SolidHunt — Agent Build Orders
 
 *Machine-executable companion to `implementation-spec.md` (v1.3, the governing spec) and `build-plan.md` (the human overview). This file is written to be handed to LLM coding agents: **each work order below is a self-contained brief for one branch.** Give an agent its own section plus the GLOBAL section plus `implementation-spec.md`, and it has everything it needs.*
 
@@ -7,7 +7,7 @@
 ## GLOBAL — read this no matter which work order you hold
 
 ### Context
-You are building one branch of **Deal Hunter**: an agentic deal-hunting shopping assistant over a seeded, deterministic, simulated sneaker market. No real scraping, no real payments. Python 3.12, Pydantic v2, pytest, SQLite/JSONL, FastAPI+SSE, SvelteKit. The full design lives in `implementation-spec.md` — **read it in full before writing code.** Where this file and the spec disagree, the spec wins; report the discrepancy (see Reporting).
+You are building one branch of **SolidHunt**: an agentic deal-hunting shopping assistant over a seeded, deterministic, simulated sneaker market. No real scraping, no real payments. Python 3.12, Pydantic v2, pytest, SQLite/JSONL, FastAPI+SSE, SvelteKit. The full design lives in `implementation-spec.md` — **read it in full before writing code.** Where this file and the spec disagree, the spec wins; report the discrepancy (see Reporting).
 
 ### The three laws (violating any = your branch is rejected)
 1. **No floats near money in the engine.** All monetary values are `Decimal` via `core/money.py`. The world generator draws floats but converts to integer cents at one boundary (spec §2.1, §4.4).

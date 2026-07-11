@@ -1,4 +1,4 @@
-# Deal Hunter — Implementation Specification (v1.3)
+# SolidHunt — Implementation Specification (v1.3)
 
 *Engineering companion to the Product Spec v2.2. That document says what and why; this one says exactly how. Where the two disagree, this document governs implementation.*
 
