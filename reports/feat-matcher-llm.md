@@ -105,3 +105,36 @@ pytest -m integration tests/test_matcher_integration.py -q
 rg -n 'is_bait|is_counterfeit|true_product_id|p_cancel\b' dealhunter/engine
 rg -n 'world\.dossier' dealhunter/engine dealhunter/llm
 ```
+
+## Post-merge completion audit
+
+Audit date: 2026-07-11. Integration base: `origin/develop` at `1fed858`.
+
+| Requirement | Evidence | Status |
+|---|---|---|
+| WO-3 task 1 — deterministic tiers 1–2 | `tests/test_matcher.py`; 57 focused matcher tests | complete |
+| WO-3 task 2 — fuzzy tier 3 and accuracy | `tests/test_matcher_integration.py`; seeds 1–5 and trap gate | complete |
+| WO-3 task 3 — OpenAI/Null clients and strict cache | `tests/test_llm_client.py`, `tests/test_llm_offline.py`; live manifest proof above | complete |
+| WO-3 task 4 — intake, clarify, vision, diff | `tests/test_llm_intake.py`; digest-only transcript and sensitive diff cases | complete |
+| WO-3 task 5 — veto-only adjudication | `tests/test_llm_adjudicate.py`; outside-list/refusal/Null abstention | complete |
+| WO-3 task 6 — placeholder-safe narration | `tests/test_llm_narrate.py`; hostile-name, digit, placeholder, imperative fallbacks | complete |
+| WO-3 task 7 — final demo cache | Current reviewed 8-row artifact is valid; exact seed-42 S3 demo requests are not frozen | blocked by final demo script |
+| S2 monitor memoization | Run-scoped `(hunt.id, listing.id)` regression added at the public `run_monitor` seam | blocked by B monitor merge |
+| S3 intake/narration API/UI wiring | D modules are ready; `api/app.py` still uses regex intake and fixed narration | blocked by C integration |
+| Full integrated static gate | Person D-owned paths are green | blocked by A/B/C failures listed in `WORK-ORDER-STATUS.md` |
+| Offline/browser rehearsal | Module replay is deterministic; real monitor/UI story unavailable on `develop` | blocked by B/C integration |
+
+### S2 handoff finding
+
+Person B's pushed but unmerged `feat/engine-s2` branch removes the Stage-0
+fallback and adds matcher reuse across ticks. Its current cache is module-global
+and keyed by world/brief/client details in addition to hunt and listing. The
+approved contract is narrower and run-scoped: a new monitor execution must not
+reuse in-memory results from an earlier execution, even if a deterministic hunt
+ID is restored. The new integration regression intentionally fails against the
+current `develop` monitor stub and will become the green gate after B lands and
+owns the engine correction.
+
+Person D is **not yet complete** under the post-merge checklist. WO-3 tasks 1–6
+are complete; task 7 and the S2/S3 cross-person acceptance gates remain blocked
+and must not be checked off without passing evidence.
