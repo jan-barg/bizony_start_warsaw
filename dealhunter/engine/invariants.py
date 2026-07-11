@@ -1,8 +1,8 @@
-"""Live safety assertions for the S1 immediate engine (spec §6.3)."""
+"""Live safety assertions for immediate and monitor execution (spec §6.3)."""
 
 from decimal import Decimal
 
-from ..core.enums import AccessTier, Action, AskKind, GeoArb
+from ..core.enums import AccessTier, Action, AskKind, GeoArb, OrderState
 from ..core.models import Hunt, Receipt, canonical_json, quote_hash
 
 
@@ -23,11 +23,7 @@ def _matching_consumed_ask(hunt: Hunt, kind: AskKind, receipt: Receipt) -> bool:
 
 
 def assert_s1_invariants(receipt: Receipt, hunt: Hunt) -> None:
-    """Assert invariants 1–5 and 7 on an emitted immediate receipt.
-
-    S1 does not create asks, but quote-exact consumed-ask checks are included so
-    later E2/E3 work cannot weaken the purchase boundary accidentally.
-    """
+    """Assert invariants 1–5 and 7 on an emitted decision receipt."""
     cap = hunt.mandate.cap_landed_eur
     band_limit = cap * (Decimal("1") + hunt.mandate.overcap_ask_band_pct)
 
@@ -87,3 +83,20 @@ def assert_s1_invariants(receipt: Receipt, hunt: Hunt) -> None:
     # Exercise canonical serialization at the assertion boundary. If a future
     # receipt contains an unsorted or unserializable field, fail during the run.
     canonical_json(receipt)
+
+
+def assert_order_invariants(hunt: Hunt, complete: bool = False) -> None:
+    active = sum(
+        order.state in {OrderState.PLACED, OrderState.CONFIRMED}
+        for order in hunt.orders
+    )
+    _require(active <= 1, 8, "more than one order is active")
+    if complete:
+        _require(
+            all(
+                order.state != OrderState.CANCELLED_BY_MERCHANT
+                for order in hunt.orders
+            ),
+            8,
+            "run completed with an unsettled merchant cancellation",
+        )

@@ -12,6 +12,9 @@ Normative reminders:
 """
 from __future__ import annotations
 
+from collections.abc import Iterator
+from contextlib import contextmanager
+from contextvars import ContextVar
 from decimal import Decimal
 
 from ..core.config import Constants
@@ -19,6 +22,7 @@ from ..core.enums import (
     ALERT_ONLY_FLAGS,
     AccessTier,
     Action,
+    AskKind,
     Channel,
     DecidedBy,
     Eligibility,
@@ -27,13 +31,42 @@ from ..core.enums import (
     Mode,
 )
 from ..core.ids import receipt_id
-from ..core.models import Evaluation, Hunt, MatchResult, Receipt, World
+from ..core.models import (
+    Evaluation,
+    Hunt,
+    MatchResult,
+    Receipt,
+    World,
+    quote_hash,
+)
 from ..llm.client import LLMClient
 from .landed import assemble
 from .matcher import match
 from .routes import enumerate_routes
 from .trust import expected_value, trust_score
 from .invariants import assert_s1_invariants
+from .alerts import (
+    can_interrupt,
+    consume_approved_ask,
+    create_ask,
+    record_interruption,
+)
+from .stopping import deal_percentile, final_buy_tick, p_better, stopping_decision
+
+
+_MATCH_MEMO: ContextVar[dict[tuple[str, str], MatchResult] | None] = ContextVar(
+    "match_memo", default=None
+)
+
+
+@contextmanager
+def _match_memo_scope() -> Iterator[None]:
+    """Keep static-title matcher results inside one engine execution."""
+    token = _MATCH_MEMO.set({})
+    try:
+        yield
+    finally:
+        _MATCH_MEMO.reset(token)
 
 
 def _one(items, predicate, description: str):
@@ -44,18 +77,14 @@ def _one(items, predicate, description: str):
 
 
 def _match_listing(listing, hunt: Hunt, world: World, llm: LLMClient) -> MatchResult:
-    """Use D's matcher, with a narrow Stage-0 fallback for pinned style codes."""
-    try:
+    """Memoize D's static-title matcher once per hunt and listing."""
+    memo = _MATCH_MEMO.get()
+    if memo is None:
         return match(listing, hunt.brief, world, llm)
-    except NotImplementedError:
-        pinned = hunt.brief.style_code
-        if pinned is not None and listing.id.endswith(f"_{pinned}"):
-            return MatchResult(
-                style_code=pinned,
-                colorway_confirmed=True,
-                confidence=0.99,
-            )
-        return MatchResult()
+    key = (hunt.id, listing.id)
+    if key not in memo:
+        memo[key] = match(listing, hunt.brief, world, llm)
+    return memo[key]
 
 
 def _evaluation_sort_key(evaluation: Evaluation):
@@ -68,14 +97,41 @@ def _considered_sort_key(evaluation: Evaluation):
     return (quote.landed_eur, quote.listing_id, quote.kind, quote.middleman_id or "")
 
 
-def evaluate_tick(hunt: Hunt, tick: int, world: World, cfg: Constants, llm: LLMClient) -> Receipt:
-    """Evaluate one immediate-mode tick through deterministic Layers 1–2.
+def _minimum_feasible_eta(
+    hunt: Hunt, tick: int, world: World, cfg: Constants, llm: LLMClient
+) -> int | None:
+    """Fastest matching route class, deliberately ignoring current stock."""
+    etas: list[int] = []
+    for listing in world.listings:
+        if listing.id in hunt.excluded_listings:
+            continue
+        result = _match_listing(listing, hunt, world, llm)
+        if result.style_code != hunt.brief.style_code:
+            continue
+        if listing.size_eu != hunt.brief.size_eu or listing.condition != hunt.brief.condition:
+            continue
+        vendor = _one(world.vendors, lambda item: item.id == listing.vendor_id, "listing vendor")
+        if hunt.brief.exclude_resellers and vendor.channel == Channel.RESELLER:
+            continue
+        if hunt.brief.exclude_kids and MatchFlag.KIDS_SIZING in result.flags:
+            continue
+        for route in enumerate_routes(listing.id, tick, hunt.mandate, world):
+            if route.kind == "direct":
+                from ..core.enums import GEO_TO_ZONE
 
-    Monitor stopping and E2/E3 human ask lifecycles intentionally land in the
-    next checkpoint. Gray ASK routes are therefore unavailable, never bought.
-    """
-    if hunt.mandate.mode != Mode.IMMEDIATE:
-        raise NotImplementedError("monitor policy requires engine/stopping.py")
+                etas.append(cfg.ETA_DIRECT[GEO_TO_ZONE[vendor.geo]])
+            else:
+                middleman = _one(
+                    world.middlemen,
+                    lambda item: item.id == route.middleman_id,
+                    "route middleman",
+                )
+                etas.append(cfg.ETA_DOMESTIC_LEG + middleman.extra_ticks)
+    return min(etas) if etas else None
+
+
+def evaluate_tick(hunt: Hunt, tick: int, world: World, cfg: Constants, llm: LLMClient) -> Receipt:
+    """Evaluate one tick through gates, EV, stopping, and escalation E0–E5."""
 
     evaluations: list[Evaluation] = []
     policy_notes: list[str] = []
@@ -191,45 +247,274 @@ def evaluate_tick(hunt: Hunt, tick: int, world: World, cfg: Constants, llm: LLMC
                 )
             )
 
-    qualifying = [
+    qualifying_all = [
         evaluation
         for evaluation in evaluations
         if evaluation.eligibility == Eligibility.QUALIFYING
         and evaluation.trust >= cfg.TRUST_FLOOR
         and evaluation.ev_eur > 0
-        and evaluation.purchase_eligible
     ]
+    qualifying = [item for item in qualifying_all if item.purchase_eligible]
     selection: list[Evaluation] = []
     for evaluation in qualifying:
         if (
             evaluation.quote.access_tier == AccessTier.IP_GATED
             and hunt.mandate.geo_arbitrage == GeoArb.ASK
         ):
-            policy_notes.append(f"gray_route_deferred:{evaluation.quote.listing_id}")
-            continue
+            allowed, reason = can_interrupt(
+                hunt,
+                tick,
+                evaluation.quote.listing_id,
+                AskKind.GRAY_ROUTE.value,
+                cfg,
+                evaluation.quote.landed_eur,
+            )
+            if not allowed:
+                policy_notes.append(f"{reason}:{evaluation.quote.listing_id}")
+                continue
         selection.append(evaluation)
 
-    auto_selection = [evaluation for evaluation in selection if evaluation.auto_buy_eligible]
-    if auto_selection:
+    previous_best = list(hunt.history_best)
+    previous_best_any = list(hunt.history_best_any)
+    current_history_best = min(
+        (item.quote.landed_eur for item in qualifying_all), default=None
+    )
+    current_history_any = min(
+        (
+            item.quote.landed_eur
+            for item in evaluations
+            if item.eligibility in {Eligibility.QUALIFYING, Eligibility.OVER_CAP_BAND}
+        ),
+        default=None,
+    )
+    stopping = None
+    should_stop = hunt.mandate.mode == Mode.IMMEDIATE
+    if hunt.mandate.mode == Mode.MONITOR and selection and current_history_best is not None:
+        minimum_eta = _minimum_feasible_eta(hunt, tick, world, cfg, llm)
+        if minimum_eta is not None:
+            should_stop, stopping = stopping_decision(
+                previous_best,
+                current_history_best,
+                tick,
+                final_buy_tick(hunt, minimum_eta),
+                cfg,
+            )
+
+    approved_ask = (
+        hunt.pending_ask
+        if hunt.pending_ask is not None
+        and hunt.pending_ask.status == "APPROVED"
+        and hunt.pending_ask.tick == tick
+        else None
+    )
+    approved_evaluation = None
+    if approved_ask is not None:
+        approved_evaluation = next(
+            (
+                item
+                for item in evaluations
+                if quote_hash(item.quote) == approved_ask.quote_hash
+                and item.purchase_eligible
+                and item.eligibility
+                in {Eligibility.QUALIFYING, Eligibility.OVER_CAP_BAND}
+            ),
+            None,
+        )
+        if approved_evaluation is None:
+            raise ValueError("approved quote is no longer executable")
+
+    auto_selection = [
+        evaluation
+        for evaluation in selection
+        if evaluation.auto_buy_eligible
+        and not (
+            evaluation.quote.access_tier == AccessTier.IP_GATED
+            and hunt.mandate.geo_arbitrage == GeoArb.ASK
+        )
+    ]
+    decided_by = DecidedBy.CODE
+    if approved_evaluation is not None and approved_ask is not None:
+        consume_approved_ask(hunt, approved_evaluation.quote, approved_ask.kind)
+        chosen = approved_evaluation
+        action = Action.BUY
+        tier = "E2" if approved_ask.kind == AskKind.GRAY_ROUTE else "E3"
+        decided_by = DecidedBy.HUMAN
+        reasons = [f"approved_ask_consumed:{approved_ask.id}"]
+    elif auto_selection:
         chosen = sorted(auto_selection, key=_evaluation_sort_key)[0]
         action = Action.BUY
         tier = "E0"
         reasons = ["auto_buy_conditions_satisfied", *policy_notes]
-    elif selection:
+        stopping = stopping if hunt.mandate.mode == Mode.MONITOR else None
+    elif selection and should_stop:
         chosen = sorted(selection, key=_evaluation_sort_key)[0]
-        action = Action.BUY
-        tier = "E1"
-        reasons = ["immediate_best_ev", *policy_notes]
+        if (
+            chosen.quote.access_tier == AccessTier.IP_GATED
+            and hunt.mandate.geo_arbitrage == GeoArb.ASK
+        ):
+            legal = [
+                item.quote.landed_eur
+                for item in selection
+                if item.quote.access_tier != AccessTier.IP_GATED
+            ]
+            sequence = (
+                1
+                if hunt.pending_ask is not None and hunt.pending_ask.tick == tick
+                else 0
+            )
+            create_ask(
+                hunt,
+                tick,
+                AskKind.GRAY_ROUTE,
+                chosen,
+                min(legal) if legal else None,
+                sequence,
+            )
+            action = Action.ASK
+            tier = "E2"
+            reasons = ["gray_route_consent_required", *policy_notes]
+        else:
+            action = Action.BUY
+            tier = "E1"
+            reasons = [
+                "immediate_best_ev"
+                if hunt.mandate.mode == Mode.IMMEDIATE
+                else "stopping_rule_buy",
+                *policy_notes,
+            ]
     else:
         chosen = None
-        action = Action.ESCALATE_NONE_FOUND
-        tier = "E5"
-        reasons = ["immediate_nothing_qualifies", *policy_notes]
-        near_misses = sorted(evaluations, key=_considered_sort_key)[:5]
-        reasons.extend(
-            f"near_miss:{item.quote.listing_id}:{','.join(item.gate_failures) or item.eligibility.value}"
-            for item in near_misses
-        )
+        band_candidates = [
+            item
+            for item in evaluations
+            if item.eligibility == Eligibility.OVER_CAP_BAND
+            and item.purchase_eligible
+            and item.trust >= cfg.TRUST_HIGH
+            and item.match.colorway_confirmed
+            and not item.match.flags
+            and not (
+                item.quote.access_tier == AccessTier.IP_GATED
+                and hunt.mandate.geo_arbitrage == GeoArb.ASK
+            )
+        ]
+        over_cap = min(band_candidates, key=_considered_sort_key) if band_candidates else None
+        e3_quality = False
+        if over_cap is not None and not selection:
+            best_ever = not previous_best_any or (
+                over_cap.quote.landed_eur <= min(previous_best_any)
+            )
+            if hunt.mandate.mode == Mode.IMMEDIATE:
+                argmin_any = min(
+                    (
+                        item
+                        for item in evaluations
+                        if item.eligibility
+                        in {Eligibility.QUALIFYING, Eligibility.OVER_CAP_BAND}
+                    ),
+                    key=_considered_sort_key,
+                    default=None,
+                )
+                timing_good = argmin_any is over_cap
+            else:
+                horizon = stopping.horizon if stopping is not None else 0
+                timing_good = (
+                    len(previous_best_any) >= cfg.MIN_OBS
+                    and p_better(
+                        previous_best_any,
+                        over_cap.quote.landed_eur,
+                        horizon,
+                        cfg,
+                    )
+                    < cfg.THETA_STOP
+                )
+            e3_quality = best_ever and timing_good
+
+        if over_cap is not None and e3_quality:
+            allowed, reason = can_interrupt(
+                hunt,
+                tick,
+                over_cap.quote.listing_id,
+                AskKind.OVER_CAP.value,
+                cfg,
+                over_cap.quote.landed_eur,
+            )
+            if allowed:
+                sequence = (
+                    1
+                    if hunt.pending_ask is not None and hunt.pending_ask.tick == tick
+                    else 0
+                )
+                create_ask(
+                    hunt,
+                    tick,
+                    AskKind.OVER_CAP,
+                    over_cap,
+                    None,
+                    sequence,
+                )
+                chosen = over_cap
+                action = Action.ASK
+                tier = "E3"
+                reasons = ["over_cap_exception_earned", *policy_notes]
+            else:
+                policy_notes.append(f"{reason}:{over_cap.quote.listing_id}")
+
+        if chosen is None:
+            previous_low = min(previous_best) if previous_best else None
+            alert_candidate = (
+                sorted(qualifying_all, key=_evaluation_sort_key)[0]
+                if qualifying_all
+                else None
+            )
+            new_low = (
+                alert_candidate is not None
+                and (
+                    previous_low is None
+                    or alert_candidate.quote.landed_eur < previous_low
+                )
+            )
+            alert_allowed = False
+            alert_reason = None
+            if alert_candidate is not None and new_low:
+                alert_allowed, alert_reason = can_interrupt(
+                    hunt,
+                    tick,
+                    alert_candidate.quote.listing_id,
+                    "ALERT",
+                    cfg,
+                )
+            if alert_candidate is not None and new_low and alert_allowed:
+                chosen = alert_candidate
+                action = Action.ALERT
+                tier = None
+                record_interruption(
+                    hunt, tick, alert_candidate.quote.listing_id, "ALERT"
+                )
+                reasons = ["new_observed_low"]
+            elif hunt.mandate.mode == Mode.IMMEDIATE:
+                action = Action.ESCALATE_NONE_FOUND
+                tier = "E5"
+                reasons = ["immediate_nothing_qualifies", *policy_notes]
+                near_misses = sorted(evaluations, key=_considered_sort_key)[:5]
+                reasons.extend(
+                    f"near_miss:{item.quote.listing_id}:{','.join(item.gate_failures) or item.eligibility.value}"
+                    for item in near_misses
+                )
+            else:
+                action = Action.HOLD
+                tier = None
+                reasons = ["monitor_wait", *policy_notes]
+                if alert_reason:
+                    reasons.append(f"{alert_reason}:ALERT")
+                if current_history_best is not None:
+                    reasons.append(
+                        f"deal_percentile:{deal_percentile(previous_best, current_history_best)}"
+                    )
+
+    if approved_ask is None and current_history_best is not None:
+        hunt.history_best.append(current_history_best)
+    if approved_ask is None and current_history_any is not None:
+        hunt.history_best_any.append(current_history_any)
 
     considered = sorted(
         [item for item in evaluations if item.eligibility != Eligibility.HARD_REJECT],
@@ -240,11 +525,12 @@ def evaluate_tick(hunt: Hunt, tick: int, world: World, cfg: Constants, llm: LLMC
         hunt_id=hunt.id,
         tick=tick,
         action=action,
-        decided_by=DecidedBy.CODE,
+        decided_by=decided_by,
         escalation_tier=tier,
         chosen=chosen,
         considered=considered,
         reasons=reasons,
+        stopping=stopping,
     )
     assert_s1_invariants(receipt, hunt)
     return receipt

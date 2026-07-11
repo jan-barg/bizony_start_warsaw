@@ -15,13 +15,29 @@ Normative reminders for the implementer:
 from __future__ import annotations
 
 from decimal import Decimal
+from typing import Literal
 
 from ..core.config import Constants
 from ..core.enums import Carrier, HsCategory, Ruleset, Zone
 from ..core.models import LineItem
 
 
-def _line(code: str, label: str, amount: Decimal) -> LineItem:
+LineItemCode = Literal[
+    "GOODS",
+    "COUPON",
+    "SHIP_DIRECT",
+    "SHIP_DOM",
+    "MM_FLAT",
+    "MM_PCT",
+    "SHIP_INTL",
+    "DUTY",
+    "DUTY_FLAT",
+    "VAT_IMPORT",
+    "HANDLING",
+]
+
+
+def _line(code: LineItemCode, label: str, amount: Decimal) -> LineItem:
     """Finalize one EUR receipt line using the shared money policy."""
     from ..core.money import q2
 

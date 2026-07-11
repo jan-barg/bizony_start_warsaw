@@ -1,5 +1,6 @@
 {
-  "version": 1,
+  "version": 2,
+  "demo_seed": 42,
   "model_pin": "gpt-5.6-terra",
   "cases": [
     {

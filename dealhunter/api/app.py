@@ -17,15 +17,12 @@ The UI is a pure consumer of receipts + events: no decision logic client-side.
 from __future__ import annotations
 
 import asyncio
-import base64
-import binascii
-import hashlib
 import json
 import os
 import re
 from decimal import Decimal
 from pathlib import Path
-from typing import Any
+from typing import Any, Literal
 
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
@@ -38,15 +35,16 @@ from ..core.ids import ask_id as make_ask_id
 from ..core.ids import hunt_id as make_hunt_id
 from ..core.models import (
     Ask, AutoBuy, Brief, Hunt, IntakeResult, Mandate, Receipt, World,
-    canonical_json, quote_hash,
+    quote_hash,
 )
 from ..engine.loop import run_immediate as engine_run_immediate
-from ..llm.cache import CacheMode, CachedClient, LLMCacheCorrupt, LLMCacheMiss
+from ..llm.cache import CacheMode, CachedClient, LLMCacheMiss
 from ..llm.client import IntakeUnavailable, LLMClient, LLMProtocolError, NullClient
-from ..llm.intake import IntakeState, clarify_intake, start_intake
+from ..llm.intake import IntakeState, clarify_intake, start_intake, start_structured_intake
 from ..llm.narrate import AskFactSheet, narrate_ask
 from ..world.dossier import render_dossier
 from ..world.generate import generate_world
+from .image_store import SessionImageStore
 
 # Generated worlds are deterministic and expensive-ish (~24k rows) — cache them
 # at module level so tests resetting FixtureEngine don't regenerate per test.
@@ -62,36 +60,6 @@ def _generated_world(seed: int) -> World:
 ROOT = Path(__file__).resolve().parent.parent.parent
 CFG = Constants()
 
-
-# ---------------------------------------------------------------------------
-# LLM — warm-cache replay (§7.3). Deterministic and network-free: hits replay
-# the committed, human-reviewed artifact; misses become abstentions, which
-# intake maps to the demoted regex parser and narration to its fact-sheet
-# template. DEALHUNTER_NO_LLM=1 is the `--no-llm` switch (NullClient).
-# ---------------------------------------------------------------------------
-
-class _ReplayOrAbstain:
-    """REPLAY misses abstain (the NullClient shape) instead of raising, so
-    unscripted transcripts degrade to the fallback path, never to a 500."""
-
-    def __init__(self, inner: LLMClient) -> None:
-        self._inner = inner
-
-    def complete(self, request: dict) -> dict:
-        try:
-            return self._inner.complete(request)
-        except LLMCacheMiss:
-            return {"abstain": True}
-
-
-def _build_llm() -> LLMClient:
-    cache = ROOT / CFG.LLM_CACHE_PATH
-    if os.environ.get("DEALHUNTER_NO_LLM") or not cache.is_file():
-        return NullClient()
-    return _ReplayOrAbstain(CachedClient(None, cache, CFG.LLM_MODEL_PIN, CacheMode.REPLAY))
-
-
-LLM: LLMClient = _build_llm()
 
 app = FastAPI(title="SolidHunt API", version="0.1.0-fixture")
 app.add_middleware(
@@ -125,7 +93,7 @@ class FixtureEngine:
         "cap_landed_eur": "What's your maximum all-in (landed) price, in EUR?",
     }
 
-    def __init__(self) -> None:
+    def __init__(self, *, llm: LLMClient | None = None, real_intake: bool = False) -> None:
         self.world = World.model_validate_json((ROOT / "fixtures" / "mini_world.json").read_text())
         rows = (ROOT / "fixtures" / "receipts_demo.jsonl").read_text().splitlines()
         receipts = [Receipt.model_validate_json(r) for r in rows]
@@ -135,6 +103,10 @@ class FixtureEngine:
         )
         self.immediate_receipt = next(r for r in receipts if r.action == Action.ESCALATE_NONE_FOUND)
         self.intakes: dict[str, dict[str, Any]] = {}
+        self.real_intakes: dict[str, IntakeState] = {}
+        self.image_store = SessionImageStore()
+        self.llm = llm or NullClient()
+        self.real_intake = real_intake
         self.hunts: dict[str, Hunt] = {}
         self.hunt_world: dict[str, str] = {}   # hunt_id → world_id (Hunt model is frozen core)
         self.asks: dict[str, Ask] = {}
@@ -233,7 +205,74 @@ class FixtureEngine:
         return rows
 
 
-ENGINE = FixtureEngine()
+def _default_llm() -> LLMClient:
+    if os.environ.get("DEALHUNTER_NO_LLM") == "1":
+        return NullClient()
+    return CachedClient(None, ROOT / CFG.LLM_CACHE_PATH, CFG.LLM_MODEL_PIN, CacheMode.REPLAY)
+
+
+ENGINE = FixtureEngine(llm=_default_llm(), real_intake=True)
+
+
+def _real_diff(state: IntakeState) -> list[dict[str, Any]]:
+    return [
+        {
+            "path": entry.path,
+            "before": entry.before,
+            "after": entry.after,
+            "sensitive": entry.sensitive,
+        }
+        for entry in state.diff
+    ]
+
+
+def _real_intake_payload(state: IntakeState) -> dict[str, Any]:
+    result = state.session.last_result
+    diff = _real_diff(state)
+    legacy_diff = [
+        {
+            "field": entry["path"],
+            "old": json.dumps(entry["before"], ensure_ascii=False),
+            "new": json.dumps(entry["after"], ensure_ascii=False),
+            "sensitive": entry["sensitive"],
+        }
+        for entry in diff
+    ]
+    payload: dict[str, Any] = {
+        "intake_id": state.session.id,
+        "status": result.status.value,
+        "missing": result.missing,
+        "questions": result.questions,
+        "diff": diff,
+        "mandate_diff": legacy_diff,
+    }
+    if result.status == IntakeStatus.OK:
+        assert state.hunt is not None
+        payload |= {
+            "hunt_id": state.hunt.id,
+            "brief": state.hunt.brief.model_dump(mode="json"),
+            "mandate": state.hunt.mandate.model_dump(mode="json"),
+        }
+    return payload
+
+
+def _store_real_intake(state: IntakeState) -> None:
+    ENGINE.real_intakes[state.session.id] = state
+    if state.hunt is None:
+        return
+    ENGINE.hunts[state.hunt.id] = state.hunt
+    ENGINE.hunt_world[state.hunt.id] = state.session.world_id
+    ENGINE.receipts_by_hunt[state.hunt.id] = []
+
+
+def _intake_http_error(error: Exception) -> HTTPException:
+    if isinstance(error, IntakeUnavailable):
+        return HTTPException(503, "LLM intake unavailable; use the structured form")
+    if isinstance(error, LLMCacheMiss):
+        return HTTPException(503, "request is absent from the reviewed replay cache")
+    if isinstance(error, ValueError):
+        return HTTPException(422, str(error))
+    return HTTPException(502, f"LLM intake failed validation: {error}")
 
 
 def _intake_payload(intake_id: str) -> dict[str, Any]:
@@ -243,6 +282,7 @@ def _intake_payload(intake_id: str) -> dict[str, Any]:
                            "missing": r.missing, "questions": r.questions,
                            "mandate_diff": s["diff"], "parser": s["parser"]}
     if r.status == IntakeStatus.OK:
+        assert r.brief is not None and r.mandate is not None
         out |= {"hunt_id": s["hunt_id"],
                 "brief": json.loads(r.brief.model_dump_json()),
                 "mandate": json.loads(r.mandate.model_dump_json())}
@@ -268,6 +308,17 @@ class IntakeBody(BaseModel):
 
 class ClarifyBody(BaseModel):
     text: str
+
+
+class StructuredIntakeBody(BaseModel):
+    world_id: str = DEFAULT_WORLD_ID
+    product_query: str
+    colorway: str | None = None
+    style_code: str | None = None
+    size_eu: str | None = None
+    cap_landed_eur: str | None = None
+    need_within_ticks: int | None = None
+    mode: Mode = Mode.MONITOR
 
 
 class MandatePatch(BaseModel):
@@ -320,33 +371,6 @@ def dossier(world_id: str) -> dict[str, str]:
 # demoted fallback (§7.1; work-order S2 slice)
 # ---------------------------------------------------------------------------
 
-class _ImageStore:
-    """API-owned image bytes for one intake session, addressed by sha256 digest
-    (the transcript stores only the reference; bytes never enter cache keys)."""
-
-    def __init__(self) -> None:
-        self._images: dict[str, bytes] = {}
-
-    def put(self, image_b64: str) -> str:
-        try:
-            data = base64.b64decode(image_b64, validate=True)
-        except (binascii.Error, ValueError) as error:
-            raise HTTPException(422, "input.image_b64 is not valid base64") from error
-        ref = f"image:sha256:{hashlib.sha256(data).hexdigest()}"
-        self._images[ref] = data
-        return ref
-
-    def resolve(self, reference: str) -> bytes:
-        return self._images[reference]
-
-
-def _llm_diff_rows(state: IntakeState) -> list[dict[str, Any]]:
-    """IntakeDiffEntry → the wire shape the confirm card renders. `sensitive`
-    marks changed authority (§7.1) so the UI can style those rows apart."""
-    return [{"field": e.path, "old": e.before, "new": e.after, "sensitive": e.sensitive}
-            for e in state.diff]
-
-
 def _texts(transcript: list[str]) -> list[str]:
     """Text turns only — the regex fallback must never see image references."""
     return [t for t in transcript if not t.startswith("image:sha256:")]
@@ -354,62 +378,94 @@ def _texts(transcript: list[str]) -> list[str]:
 
 @app.post("/intake")
 def intake(body: IntakeBody) -> dict[str, Any]:
-    world = _resolve_world(body.world_id)   # validate early; generates + caches if needed
+    world = _resolve_world(body.world_id)      # validate early; generates + caches if needed
     ENGINE._n_intake += 1
     intake_id = f"i_{ENGINE._n_intake:03d}"
-    text = body.input.get("text", "")
-    images = _ImageStore()
-    image_ref = images.put(body.input["image_b64"]) if body.input.get("image_b64") else None
-    session: dict[str, Any] = {"transcript": [text], "result": None, "diff": [],
-                               "hunt_id": None, "world_id": body.world_id,
-                               "images": images, "llm_state": None, "parser": "regex"}
-    try:
-        state = start_intake(intake_id, body.world_id, text, world, LLM, CFG,
-                             image_ref=image_ref, image_resolver=images)
-        # first-parse diff would be "everything extracted" noise — the UI diff
-        # note is for clarify-round changes, so it starts empty on both paths
-        session |= {"llm_state": state, "parser": "llm",
-                    "transcript": list(state.session.transcript),
-                    "result": state.session.last_result}
-    except (IntakeUnavailable, LLMProtocolError, LLMCacheCorrupt):
-        session["result"] = ENGINE.parse(_texts(session["transcript"]))
+    if ENGINE.real_intake:
+        try:
+            image_ref = None
+            if image_b64 := body.input.get("image_b64"):
+                image_ref = ENGINE.image_store.add_b64(image_b64)
+            state = start_intake(
+                intake_id,
+                body.world_id,
+                body.input.get("text", ""),
+                world,
+                ENGINE.llm,
+                CFG,
+                image_ref=image_ref,
+                image_resolver=ENGINE.image_store,
+            )
+        except (IntakeUnavailable, LLMCacheMiss, LLMProtocolError, ValueError) as error:
+            raise _intake_http_error(error) from error
+        _store_real_intake(state)
+        return _real_intake_payload(state)
+    transcript = [body.input.get("text", "")]
+    result = ENGINE.parse(transcript)
+    session = {"transcript": transcript, "result": result, "diff": [], "hunt_id": None,
+               "world_id": body.world_id}
     ENGINE.intakes[intake_id] = session
     if session["result"].status == IntakeStatus.OK:
         session["hunt_id"] = _create_hunt(session["result"], body.world_id)
     return _intake_payload(intake_id)
 
 
+@app.post("/intake/structured")
+def structured_intake(body: StructuredIntakeBody) -> dict[str, Any]:
+    world = _resolve_world(body.world_id)
+    ENGINE._n_intake += 1
+    intake_id = f"i_{ENGINE._n_intake:03d}"
+    try:
+        state = start_structured_intake(
+            intake_id,
+            body.world_id,
+            body.model_dump(mode="json", exclude={"world_id"}, exclude_none=True),
+            world,
+            CFG,
+        )
+    except (LLMProtocolError, ValueError) as error:
+        raise _intake_http_error(error) from error
+    _store_real_intake(state)
+    return _real_intake_payload(state)
+
+
 @app.post("/intake/{intake_id}/clarify")
 def clarify(intake_id: str, body: ClarifyBody) -> dict[str, Any]:
+    if intake_id in ENGINE.real_intakes:
+        current = ENGINE.real_intakes[intake_id]
+        if current.hunt is not None:
+            raise HTTPException(409, "intake already promoted to a hunt")
+        try:
+            state = clarify_intake(
+                current,
+                body.text,
+                _resolve_world(current.session.world_id),
+                ENGINE.llm,
+                CFG,
+                image_resolver=ENGINE.image_store,
+            )
+        except (IntakeUnavailable, LLMCacheMiss, LLMProtocolError, ValueError) as error:
+            raise _intake_http_error(error) from error
+        _store_real_intake(state)
+        return _real_intake_payload(state)
     s = ENGINE.intakes.get(intake_id)
     if s is None:
         raise HTTPException(404, "unknown intake session")
     if s["hunt_id"]:
         raise HTTPException(409, "intake already promoted to a hunt")
     s["transcript"].append(body.text)
-    state: IntakeState | None = s["llm_state"]
-    if state is not None:
-        try:
-            state = clarify_intake(state, body.text, _resolve_world(s["world_id"]), LLM,
-                                   CFG, image_resolver=s["images"])
-        except (IntakeUnavailable, LLMProtocolError, LLMCacheCorrupt):
-            state = None                                 # degrade for good below
-    if state is not None:
-        s |= {"llm_state": state, "parser": "llm",
-              "result": state.session.last_result, "diff": _llm_diff_rows(state)}
-    else:
-        # Regex fallback re-parses the full text transcript (§7.1). A degraded
-        # session stays degraded: the replay cache is keyed on the whole
-        # transcript, so once one round misses, every later round would too.
-        texts = _texts(s["transcript"])
-        s |= {"llm_state": None, "parser": "regex", "result": ENGINE.parse(texts),
-              "diff": FixtureEngine.field_diff(" ".join(texts[:-1]), " ".join(texts))}
+    # Regex sessions re-parse the full text transcript (§7.1); field_diff
+    # reports answers the user REVISED across rounds ("make it €88").
+    texts = _texts(s["transcript"])
+    s |= {"result": ENGINE.parse(texts),
+          "diff": FixtureEngine.field_diff(" ".join(texts[:-1]), " ".join(texts))}
     if s["result"].status == IntakeStatus.OK:
         s["hunt_id"] = _create_hunt(s["result"], s.get("world_id", DEFAULT_WORLD_ID))
     return _intake_payload(intake_id)
 
 
 def _create_hunt(result: IntakeResult, world_id: str) -> str:
+    assert result.brief is not None and result.mandate is not None
     ENGINE._n_hunt += 1
     hid = make_hunt_id(0, ENGINE._n_hunt)
     ENGINE.hunts[hid] = Hunt(id=hid, brief=result.brief, mandate=result.mandate,
@@ -467,7 +523,7 @@ def run_immediate(hunt_id: str) -> dict[str, Any]:
         })
         # every LLM entry point reads through the replay cache (§7.3); on a
         # miss the matcher's tier 4 abstains — identical to the old NullClient
-        r = engine_run_immediate(run_hunt, _resolve_world(world_id), CFG, LLM)
+        r = engine_run_immediate(run_hunt, _resolve_world(world_id), CFG, ENGINE.llm)
         r = r.model_copy(update={"hunt_id": hunt_id})
 
     ENGINE.receipts_by_hunt[hunt_id].append(r)
@@ -519,19 +575,33 @@ def _make_ask(hunt: Hunt, receipt: Receipt, seq: int) -> Ask:
     quoted either way (§7.4). Lookups go against the fixture world because the
     replayed timeline's listings live there, whatever world the hunt targets."""
     kind = AskKind.GRAY_ROUTE if receipt.escalation_tier == "E2" else AskKind.OVER_CAP
+    if receipt.chosen is None:
+        raise ValueError("ASK receipt must carry a chosen evaluation")
     q = receipt.chosen.quote
-    listing = next((l for l in ENGINE.world.listings if l.id == q.listing_id), None)
-    vendor = (next((v for v in ENGINE.world.vendors if v.id == listing.vendor_id), None)
-              if listing else None)
-    facts = AskFactSheet(
-        kind=kind, quote=q,
-        vendor_name=vendor.name if vendor else q.listing_id,
-        listing_title=listing.raw_title if listing else q.listing_id,
-        comparison_landed_eur=Decimal("84.00"),     # scripted best non-gray alternative
-        cap_landed_eur=hunt.mandate.cap_landed_eur if kind == AskKind.OVER_CAP else None)
+    world = _resolve_world(ENGINE.hunt_world.get(hunt.id, "w_fixture"))
+    listing = next((item for item in world.listings if item.id == q.listing_id), None)
+    if listing is None:
+        vendor_name = "Fixture vendor"
+        listing_title = q.listing_id
+    else:
+        vendor = next(item for item in world.vendors if item.id == listing.vendor_id)
+        vendor_name = vendor.name
+        listing_title = listing.raw_title
+    comparison = Decimal("84.00")
+    narrative = narrate_ask(
+        AskFactSheet(
+            kind=kind,
+            quote=q,
+            vendor_name=vendor_name,
+            listing_title=listing_title,
+            comparison_landed_eur=comparison,
+            cap_landed_eur=hunt.mandate.cap_landed_eur,
+        ),
+        ENGINE.llm,
+    )
     return Ask(id=make_ask_id(hunt.id, receipt.tick, seq), hunt_id=hunt.id, tick=receipt.tick,
-               kind=kind, quote=q, comparison_landed_eur=Decimal("84.00"),
-               quote_hash=quote_hash(q), narrative=narrate_ask(facts, LLM), status="PENDING")
+               kind=kind, quote=q, comparison_landed_eur=comparison,
+               quote_hash=quote_hash(q), narrative=narrative, status="PENDING")
 
 
 @app.get("/hunts/{hunt_id}/events")
@@ -657,7 +727,9 @@ async def events(hunt_id: str, tick_ms: int | None = None) -> EventSourceRespons
 # Asks
 # ---------------------------------------------------------------------------
 
-def _resolve_ask(ask_id: str, resolution: str) -> dict[str, str]:
+def _resolve_ask(
+    ask_id: str, resolution: Literal["APPROVED", "DECLINED"]
+) -> dict[str, str]:
     ask = ENGINE.asks.get(ask_id)
     if ask is None:
         raise HTTPException(404, "unknown ask")
@@ -713,11 +785,8 @@ def eval_report(run_id: str) -> dict[str, str]:
 
 @app.get("/config")
 def config() -> dict[str, Any]:
-    llm_on = not isinstance(LLM, NullClient)
     return {"tick_ms": CFG.TICK_MS, "horizon": CFG.HORIZON, "backend": "hybrid",
-            "real": ["worlds", "dossier", "run_immediate", "ask_narration"]
-                    + (["intake_llm_replay"] if llm_on else []),
-            "fixture": ["monitor_events"] + ([] if llm_on else ["intake_parser"]),
-            "intake": {"llm": llm_on, "cache": str(CFG.LLM_CACHE_PATH),
-                       "model_pin": CFG.LLM_MODEL_PIN, "fallback": "regex"},
+            "real": ["worlds", "dossier", "run_immediate", "intake", "narration"],
+            "fixture": ["monitor_events"],
+            "llm_mode": "null" if isinstance(ENGINE.llm, NullClient) else "replay",
             "default_world": DEFAULT_WORLD_ID}

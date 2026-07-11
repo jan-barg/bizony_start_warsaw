@@ -27,6 +27,7 @@ __all__ = [
     "IntakeState",
     "clarify_intake",
     "start_intake",
+    "start_structured_intake",
 ]
 
 
@@ -352,6 +353,32 @@ def _parse(
 ) -> IntakeState:
     response = llm.complete(_request(transcript, image_ref, image_resolver))
     draft, question_bank = _provider_draft(response)
+    return _state_from_draft(
+        session_id,
+        world_id,
+        transcript,
+        world,
+        cfg,
+        image_ref,
+        start_tick,
+        previous,
+        draft,
+        question_bank,
+    )
+
+
+def _state_from_draft(
+    session_id: str,
+    world_id: str,
+    transcript: list[str],
+    world: World,
+    cfg: Constants,
+    image_ref: str | None,
+    start_tick: int,
+    previous: dict[str, Any] | None,
+    draft: dict[str, Any],
+    question_bank: dict[str, str],
+) -> IntakeState:
     _sanitize_style_code(draft, transcript, world)
     missing, candidates = _missing_and_candidates(draft, world, cfg)
     questions = [
@@ -394,6 +421,58 @@ def _parse(
         hunt=hunt,
         image_ref=image_ref,
         start_tick=start_tick,
+    )
+
+
+def start_structured_intake(
+    session_id: str,
+    world_id: str,
+    fields: dict[str, Any],
+    world: World,
+    cfg: Constants | None = None,
+    *,
+    start_tick: int = 0,
+) -> IntakeState:
+    """Compile trusted form fields through the same deterministic sufficiency gate."""
+    draft = {
+        "brief": {
+            "product_query": fields.get("product_query"),
+            "colorway": fields.get("colorway"),
+            "style_code": fields.get("style_code"),
+            "size_eu": fields.get("size_eu"),
+            "condition": fields.get("condition", "NEW"),
+            "exclude_kids": fields.get("exclude_kids", True),
+            "exclude_resellers": fields.get("exclude_resellers", False),
+        },
+        "mandate": {
+            "mode": fields.get("mode", Mode.MONITOR.value),
+            "cap_landed_eur": fields.get("cap_landed_eur"),
+            "need_within_ticks": fields.get("need_within_ticks"),
+            "auto_buy": fields.get("auto_buy"),
+            "allow_middlemen": fields.get("allow_middlemen", True),
+            "geo_arbitrage": fields.get("geo_arbitrage", "ASK"),
+            "overcap_ask_band_pct": fields.get("overcap_ask_band_pct", "0.10"),
+            "alert_budget_per_week": fields.get("alert_budget_per_week", 2),
+        },
+    }
+    transcript = [
+        " ".join(
+            str(fields[key])
+            for key in ("product_query", "style_code", "size_eu", "cap_landed_eur")
+            if fields.get(key) is not None
+        )
+    ]
+    return _state_from_draft(
+        session_id,
+        world_id,
+        transcript,
+        world,
+        cfg or Constants(),
+        None,
+        start_tick,
+        None,
+        draft,
+        {},
     )
 
 
