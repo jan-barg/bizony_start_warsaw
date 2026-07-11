@@ -80,7 +80,9 @@ stopping is the next planned slice.
 - Added `scripts/demo_monitor.py` for deterministic seed-42 monitor replay.
   The replay emits 84 HOLD, 4 ALERT, and 1 BUY receipt (tick 88); two runs have
   identical SHA-256
-  `a8428d5c93b7b9196606d849ab6ddfa82e1dc5127de07c823a76361b65710989`.
+  `f26aa0d5010d17d5461d966c984cab9458bd184bc9602c0c830ff491d77ce825`
+  with D's real matcher. The real-matcher immediate replay is also identical at
+  `311ec121fc088227e464a1e7b0ccff7b9acd9185e97af39abbdbd3d4fba256e3`.
 
 Person D's matcher is integrated and memoized by `(world, hunt, listing, brief,
 client type)`; the temporary pinned-style fallback has been removed. Person A's
