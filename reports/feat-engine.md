@@ -16,27 +16,18 @@
 - `run_immediate` and an offline generated-world seed-42 demo.
 - Focused customs, landed, route, trust, policy, and immediate integration tests.
 
-## Intentionally deferred
+## Work outside B's completed scope
 
-- Monitor stopping and V9.
-- E2 gray-route and E3 over-cap ask creation/approval/decline lifecycle.
-- Alerts and the unified interruption budget.
-- Order cancellation, refund processing, and settlement epilogue.
-- Full monitor-loop determinism V10 and invariants tied to asks/orders.
-
-The immediate policy treats a positive-EV IP-gated route under `GeoArb.ASK` as
-unavailable, records `gray_route_deferred`, and reselects a legal route. It never
-silently buys the gray route.
+- Person A owns the multi-seed evaluation harness and reports.
+- Person C owns switching API/UI monitor SSE from fixtures to `run_monitor`.
+- Person C and D own real intake/narration wiring and the final warmed cache.
+- Judge View and the final 200-seed evaluation remain S3 work.
 
 ## Integration notes
 
-- `engine/matcher.py` is owned by Person D and remains a Stage-0 stub. Policy
-  calls it normally and temporarily falls back only when it raises
-  `NotImplementedError`, and only for a brief with a pinned style code matching
-  the deterministic listing-id suffix. Remove that fallback after D's matcher
-  is integrated at S2.
-- `run_monitor` remains a typed stub and immediate policy rejects monitor mode
-  explicitly.
+- Person D's real matcher is integrated and memoized per hunt/listing. The
+  temporary Stage-0 fallback has been removed.
+- `run_monitor` is complete and is ready to replace C's fixture SSE source.
 - No engine module reads eval-only hidden world labels.
 - No file under `dealhunter/core/` or `fixtures/` was changed.
 
@@ -56,8 +47,8 @@ uv sync --extra dev
 .venv/bin/python scripts/demo_immediate.py
 ```
 
-At branch handoff, 66 tests passed and only V9 was xfailed because monitor
-stopping is the next planned slice.
+The original S1 handoff had 66 passing tests and one expected V9 xfail. The
+completed S2 branch verification is recorded below.
 
 ## S1 integration on `develop`
 
@@ -67,3 +58,49 @@ stopping is the next planned slice.
 - The generated-world result is an E1 BUY at €133.63 with exact line items.
 - Two sequential demo runs produced identical SHA-256:
   `a81174631adb82ad39513d098f8d0c9602f6dcbcbf58b97261c54fae75d5f18c`.
+
+## S2 engine continuation
+
+- Added the documented Beta-Binomial finite-horizon stopping rule, explicit
+  least-squares trend heuristic, warm-up, deadline horizon, and forcing day.
+- Completed E0–E5 policy, unified interruption budget, gray-route and over-cap
+  asks, decline/re-ask behavior, and quote-exact HUMAN approval consumption.
+- Added monitor pause/resume, append-only orders, deterministic cancellation
+  outcomes behind the world boundary, same-tick immediate retry, refunds,
+  settlement epilogue, canonical JSONL writing, and invariants 1–8 coverage.
+- Added `scripts/demo_monitor.py` for deterministic seed-42 monitor replay.
+  The replay emits 84 HOLD, 4 ALERT, and 1 BUY receipt (tick 88); two runs have
+  identical SHA-256
+  `f26aa0d5010d17d5461d966c984cab9458bd184bc9602c0c830ff491d77ce825`
+  with D's real matcher. The real-matcher immediate replay is also identical at
+  `311ec121fc088227e464a1e7b0ccff7b9acd9185e97af39abbdbd3d4fba256e3`.
+
+Person D's matcher is integrated and memoized by `(world, hunt, listing, brief,
+client type)`; the temporary pinned-style fallback has been removed. Person A's
+evaluation harness remains external to B.
+
+Static integration note: B-owned engine modules pass mypy. The latest merged
+`develop` still reports unrelated type errors in API/world files and six Ruff
+unused-import findings already recorded by Person D's handoff; they are not
+modified from this engine branch.
+
+Matcher integration note: D's original alert-only policy test required E5, but
+the governing §5.8 order permits ALERT before E5. The integrated assertion now
+checks the actual safety contract: no BUY and `purchase_eligible=False`.
+
+## Final S2 verification (2026-07-11)
+
+- Default suite twice: `238 passed, 5 deselected, 0 xfailed` on each run.
+- Real-matcher integration suite: `5 passed`.
+- V10 is a normal acceptance test, not skipped or integration-deselected. It
+  compares two fresh seed-42 worlds and full 90-tick monitor receipt streams as
+  bytes.
+- `ruff check` passes for B-owned engine paths and V10; `mypy
+  dealhunter/engine` passes for all 12 engine modules.
+- Hidden-label and dossier-import guards are clean.
+- `build-plan.md`, frozen core contracts, fixtures, and the two governing specs
+  are unchanged relative to `origin/develop`.
+- Immediate demo twice: identical SHA-256
+  `311ec121fc088227e464a1e7b0ccff7b9acd9185e97af39abbdbd3d4fba256e3`.
+- Monitor demo twice: identical SHA-256
+  `f26aa0d5010d17d5461d966c984cab9458bd184bc9602c0c830ff491d77ce825`.

@@ -2,7 +2,7 @@
 
 from decimal import Decimal
 
-from ..core.enums import AccessTier, Action, AskKind, GeoArb
+from ..core.enums import AccessTier, Action, AskKind, GeoArb, OrderState
 from ..core.models import Hunt, Receipt, canonical_json, quote_hash
 
 
@@ -87,3 +87,20 @@ def assert_s1_invariants(receipt: Receipt, hunt: Hunt) -> None:
     # Exercise canonical serialization at the assertion boundary. If a future
     # receipt contains an unsorted or unserializable field, fail during the run.
     canonical_json(receipt)
+
+
+def assert_order_invariants(hunt: Hunt, complete: bool = False) -> None:
+    active = sum(
+        order.state in {OrderState.PLACED, OrderState.CONFIRMED}
+        for order in hunt.orders
+    )
+    _require(active <= 1, 8, "more than one order is active")
+    if complete:
+        _require(
+            all(
+                order.state != OrderState.CANCELLED_BY_MERCHANT
+                for order in hunt.orders
+            ),
+            8,
+            "run completed with an unsettled merchant cancellation",
+        )
