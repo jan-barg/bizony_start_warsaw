@@ -24,7 +24,7 @@ from pydantic import BaseModel
 from sse_starlette.sse import EventSourceResponse
 
 from ..core.config import Constants
-from ..core.enums import Action, AskKind, GeoArb, HuntStatus, IntakeStatus, Mode
+from ..core.enums import Action, AskKind, DecidedBy, GeoArb, HuntStatus, IntakeStatus, Mode
 from ..core.ids import ask_id as make_ask_id
 from ..core.ids import hunt_id as make_hunt_id
 from ..core.models import (
@@ -431,11 +431,24 @@ async def events(hunt_id: str, tick_ms: int | None = None) -> EventSourceRespons
             return {"event": type_,
                     "data": json.dumps({"type": type_, "tick": tick, "payload": payload})}
 
+        # Scripted-arc coherence: the cancellation/refund receipts belong to the
+        # gray order's story. They play ONLY if that order was actually placed
+        # (user approved the E2 ask) — declining must never show a merchant
+        # cancelling an order that never existed (user-reported bug).
+        gray_placed = False
         seq = 0
         last_tick = -1
         for r in ENGINE.timeline:
             if h.status == HuntStatus.REVOKED:
                 break
+            joined = " ".join(r.reasons).lower()
+            is_cancel = "cancelled_by_merchant" in joined
+            is_refund = "refund settled" in joined
+            if (is_cancel or is_refund) and not gray_placed:
+                continue                       # no order → no cancellation sub-arc
+            if r.action == Action.ASK and r.escalation_tier == "E3" and gray_placed:
+                continue                       # order pending → over-cap ask is incoherent
+
             for t in range(last_tick + 1, r.tick + 1):
                 yield env("tick", t, {})
                 await asyncio.sleep(delay)
@@ -460,9 +473,30 @@ async def events(hunt_id: str, tick_ms: int | None = None) -> EventSourceRespons
                 h.status = HuntStatus.RUNNING
                 yield env("status", r.tick, {"status": h.status.value, "clock": "running",
                                              "ask_resolution": ENGINE.asks[ask.id].status})
-                if ENGINE.asks[ask.id].status == "APPROVED" and ask.kind == AskKind.GRAY_ROUTE:
-                    # scripted fixture arc: gray order placed → merchant cancels → refund
-                    yield env("order", r.tick, {"state": "PLACED", "quote_hash": ask.quote_hash})
+                if ENGINE.asks[ask.id].status == "APPROVED":
+                    if ask.kind == AskKind.GRAY_ROUTE:
+                        # gray order placed → the merchant-cancellation arc will play
+                        gray_placed = True
+                        yield env("order", r.tick, {"state": "PLACED", "quote_hash": ask.quote_hash})
+                    else:
+                        # OVER_CAP approval = the purchase executes AT THE ASK'S TICK,
+                        # quote-exact, decided_by HUMAN (§5.9) — the hunt ends here,
+                        # it does not keep watching.
+                        buy = row.model_copy(update={
+                            "id": f"{row.id}b", "action": Action.BUY,
+                            "decided_by": DecidedBy.HUMAN,
+                            "reasons": [f"cap_extended_once:{ask.id}",
+                                        "one-time cap extension approved by user"],
+                        })
+                        ENGINE.receipts_by_hunt[hunt_id].append(buy)
+                        yield env("receipt", r.tick, json.loads(buy.model_dump_json()))
+                        yield env("order", r.tick, {"state": "PLACED",
+                                                    "listing_id": buy.chosen.quote.listing_id})
+                        yield env("order", r.tick, {"state": "CONFIRMED",
+                                                    "delivery_at_tick": r.tick + buy.chosen.quote.eta_ticks})
+                        h.status = HuntStatus.PURCHASED
+                        yield env("status", r.tick, {"status": h.status.value})
+                        break
 
             if r.action == Action.BUY:
                 yield env("order", r.tick, {"state": "PLACED", "listing_id": row.chosen.quote.listing_id})
@@ -472,10 +506,10 @@ async def events(hunt_id: str, tick_ms: int | None = None) -> EventSourceRespons
                 yield env("status", r.tick, {"status": h.status.value})
                 break
 
-            if "CANCELLED_BY_MERCHANT" in " ".join(row.reasons):
+            if is_cancel:
                 yield env("order", r.tick, {"state": "CANCELLED_BY_MERCHANT",
                                             "refund_at_tick": r.tick + CFG.REFUND_TICKS})
-            if "refund settled" in " ".join(row.reasons).lower():
+            if is_refund:
                 yield env("order", r.tick, {"state": "REFUNDED"})
 
         if h.status == HuntStatus.REVOKED:

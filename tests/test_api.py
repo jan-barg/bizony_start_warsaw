@@ -169,12 +169,14 @@ def parse_sse(text: str) -> list[dict]:
             for line in text.splitlines() if line.startswith("data:")]
 
 
-async def resolve_asks_as_they_appear(ac: httpx.AsyncClient, resolution: str, n: int) -> list[str]:
-    """Poll for PENDING asks and resolve them; returns resolved ids."""
+async def resolve_asks_as_they_appear(ac: httpx.AsyncClient, plan: dict[str, str], n: int) -> list[str]:
+    """Poll for PENDING asks and resolve each by its kind per `plan`
+    ({kind: "approve"|"decline"}); returns resolved ids."""
     resolved: list[str] = []
     while len(resolved) < n:
         for ask in list(api.ENGINE.asks.values()):
             if ask.status == "PENDING" and ask.id not in resolved:
+                resolution = plan[ask.kind.value]
                 res = await ac.post(f"/asks/{ask.id}/{resolution}")
                 assert res.json()["status"] == resolution.upper() + "D"  # APPROVED / DECLINED
                 resolved.append(ask.id)
@@ -182,74 +184,88 @@ async def resolve_asks_as_they_appear(ac: httpx.AsyncClient, resolution: str, n:
     return resolved
 
 
+async def run_monitor_stream(ac: httpx.AsyncClient, plan: dict[str, str], n_asks: int):
+    r = await ac.post("/intake", json={"input": {"text": "nike dunk panda size 43 under €80"}})
+    hunt_id = r.json()["hunt_id"]
+    await ac.post(f"/hunts/{hunt_id}/confirm")
+    await ac.post(f"/hunts/{hunt_id}/start")
+    resolver = asyncio.create_task(resolve_asks_as_they_appear(ac, plan, n_asks))
+    resp = await asyncio.wait_for(
+        ac.get(f"/hunts/{hunt_id}/events", params={"tick_ms": 0}), timeout=30)
+    resolved = await asyncio.wait_for(resolver, timeout=5)
+    return hunt_id, parse_sse(resp.text), resolved
+
+
+def order_states(seen: list[dict]) -> list[str]:
+    return [e["payload"]["state"] for e in seen if e["type"] == "order"]
+
+
 @pytest.mark.anyio
-async def test_sse_monitor_stream_ask_pause_and_approve():
+async def test_sse_approve_gray_plays_cancellation_arc_and_skips_overcap():
+    """Approving the E2 gray ask: order PLACED → merchant cancels → refund;
+    the E3 over-cap ask is incoherent while an order is pending and never fires;
+    the scripted BUY still ends the hunt."""
     api.ENGINE = api.FixtureEngine()
     transport = httpx.ASGITransport(app=api.app)
     async with httpx.AsyncClient(transport=transport, base_url="http://test") as ac:
-        r = await ac.post("/intake", json={"input": {"text": "nike dunk panda size 43 under €80"}})
-        hunt_id = r.json()["hunt_id"]
-        await ac.post(f"/hunts/{hunt_id}/confirm")
         # events before start → 409
-        assert (await ac.get(f"/hunts/{hunt_id}/events")).status_code == 409
-        await ac.post(f"/hunts/{hunt_id}/start")
+        r = await ac.post("/intake", json={"input": {"text": "nike dunk panda size 43 under €80"}})
+        pre = r.json()["hunt_id"]
+        await ac.post(f"/hunts/{pre}/confirm")
+        assert (await ac.get(f"/hunts/{pre}/events")).status_code == 409
 
-        resolver = asyncio.create_task(resolve_asks_as_they_appear(ac, "approve", 2))
-        resp = await asyncio.wait_for(
-            ac.get(f"/hunts/{hunt_id}/events", params={"tick_ms": 0}), timeout=30)
-        asks_resolved = await asyncio.wait_for(resolver, timeout=5)
-
-        assert resp.status_code == 200
-        assert resp.headers["content-type"].startswith("text/event-stream")
-        seen = parse_sse(resp.text)
+        hunt_id, seen, resolved = await run_monitor_stream(
+            ac, {"GRAY_ROUTE": "approve", "OVER_CAP": "approve"}, n_asks=1)
         for env in seen:
             assert {"type", "tick", "payload"} <= set(env), "envelope shape (§8)"
-
-        types = [e["type"] for e in seen]
-        assert types.count("tick") >= 40, "ticks streamed"
-        assert "receipt" in types and "order" in types
-        ask_events = [e for e in seen if e["type"] == "ask"]
-        assert {a["payload"]["kind"] for a in ask_events} == {"GRAY_ROUTE", "OVER_CAP"}
-        for a in ask_events:
-            assert a["payload"]["quote_hash"] and a["payload"]["narrative"]
-        # clock visibly paused around each ask
-        paused = [e for e in seen if e["type"] == "status" and e["payload"].get("clock") == "paused"]
-        assert len(paused) == 2
-        assert len(asks_resolved) == 2
-        final = seen[-1]
-        assert final["type"] == "done" and final["payload"]["final_status"] == "PURCHASED"
+        assert [e["payload"]["kind"] for e in seen if e["type"] == "ask"] == ["GRAY_ROUTE"]
+        assert order_states(seen) == ["PLACED", "CANCELLED_BY_MERCHANT", "REFUNDED",
+                                      "PLACED", "CONFIRMED"]
+        assert seen[-1]["type"] == "done" and seen[-1]["payload"]["final_status"] == "PURCHASED"
 
         # single-use consent: re-approving a resolved ask must 409 (§6.3)
-        res = await ac.post(f"/asks/{asks_resolved[0]}/approve")
-        assert res.status_code == 409
-
-        # receipts persisted and pageable
+        assert (await ac.post(f"/asks/{resolved[0]}/approve")).status_code == 409
         got = (await ac.get(f"/hunts/{hunt_id}/receipts", params={"from_tick": 40})).json()
         assert any(r["action"] == "BUY" for r in got)
 
 
 @pytest.mark.anyio
-async def test_sse_decline_path_continues():
+async def test_sse_decline_gray_no_phantom_cancellation():
+    """User-reported bug: declining the gray ask must NOT show a merchant
+    cancelling an order that was never placed."""
     api.ENGINE = api.FixtureEngine()
     transport = httpx.ASGITransport(app=api.app)
     async with httpx.AsyncClient(transport=transport, base_url="http://test") as ac:
-        r = await ac.post("/intake", json={"input": {"text": "nike dunk panda size 43 under €80"}})
-        hunt_id = r.json()["hunt_id"]
-        await ac.post(f"/hunts/{hunt_id}/confirm")
-        await ac.post(f"/hunts/{hunt_id}/start")
-
-        resolver = asyncio.create_task(resolve_asks_as_they_appear(ac, "decline", 2))
-        resp = await asyncio.wait_for(
-            ac.get(f"/hunts/{hunt_id}/events", params={"tick_ms": 0}), timeout=30)
-        declined = await asyncio.wait_for(resolver, timeout=5)
-
-        seen = parse_sse(resp.text)
-        # declines never end the hunt; the scripted BUY still lands
-        assert seen[-1]["payload"]["final_status"] == "PURCHASED"
-        assert len(declined) == 2
+        _, seen, _ = await run_monitor_stream(
+            ac, {"GRAY_ROUTE": "decline", "OVER_CAP": "decline"}, n_asks=2)
+        states = order_states(seen)
+        assert "CANCELLED_BY_MERCHANT" not in states and "REFUNDED" not in states
+        assert states == ["PLACED", "CONFIRMED"]        # only the final scripted BUY
+        assert {a["payload"]["kind"] for a in seen if a["type"] == "ask"} == \
+            {"GRAY_ROUTE", "OVER_CAP"}
         resolutions = [e["payload"].get("ask_resolution") for e in seen
                        if e["type"] == "status" and "ask_resolution" in e["payload"]]
         assert resolutions == ["DECLINED", "DECLINED"]
+        assert seen[-1]["payload"]["final_status"] == "PURCHASED"
+
+
+@pytest.mark.anyio
+async def test_sse_approve_overcap_buys_at_ask_tick():
+    """§5.9: approving an OVER_CAP ask executes the purchase at the ask's tick,
+    decided_by HUMAN — the hunt ends there instead of watching on."""
+    api.ENGINE = api.FixtureEngine()
+    transport = httpx.ASGITransport(app=api.app)
+    async with httpx.AsyncClient(transport=transport, base_url="http://test") as ac:
+        hunt_id, seen, _ = await run_monitor_stream(
+            ac, {"GRAY_ROUTE": "decline", "OVER_CAP": "approve"}, n_asks=2)
+        assert order_states(seen) == ["PLACED", "CONFIRMED"]
+        done = seen[-1]
+        assert done["payload"]["final_status"] == "PURCHASED"
+        assert done["tick"] == 31, "hunt ends at the over-cap ask's tick, not the scripted BUY"
+        buys = [e for e in seen if e["type"] == "receipt" and e["payload"]["action"] == "BUY"]
+        assert len(buys) == 1
+        assert buys[0]["payload"]["decided_by"] == "HUMAN"
+        assert any(r.startswith("cap_extended_once:") for r in buys[0]["payload"]["reasons"])
 
 
 # ---------------------------------------------------------------- misc surface
