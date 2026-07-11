@@ -163,7 +163,7 @@
       </div>
     </section>
 
-    <section class="slide demo intake-demo" data-title="Request becomes data" aria-hidden="true">
+    <section class="slide demo intake-demo" data-title="" aria-hidden="true">
       <header class="slide-head compact">
         <span class="kicker">05 · FROM WORDS TO DATA</span>
         <h2>He says it once.<br />We structure the hunt.</h2>
@@ -181,7 +181,6 @@
           <article class="parse-chip chip-4"><span>TOTAL LIMIT</span><strong>€100 delivered</strong></article>
           <article class="parse-chip chip-5"><span>TIMING</span><strong>Wait for the right deal</strong></article>
         </div>
-        <div class="approval-line"><i></i><span>Jan checks the details before the search begins.</span></div>
       </div>
     </section>
 
@@ -245,60 +244,60 @@
           </div>
           <div class="hash">receipt h_42_1 · tick 18 · append-only decision record</div>
         </article>
-        <aside class="receipt-proof">
-          <span>THE RECEIPT SAVES</span>
-          <div><b>01</b><strong>Inputs</strong><small>price · FX · tax · shipping</small></div>
-          <div><b>02</b><strong>Rules</strong><small>budget · size · trust</small></div>
-          <div><b>03</b><strong>Reason</strong><small>why this route won</small></div>
-          <div><b>04</b><strong>Outcome</strong><small>buy · wait · reject</small></div>
-        </aside>
       </div>
       <a class="source" href="../implementation-spec.md" target="_blank">Decision receipts: implementation spec §§5.9–6.3</a>
     </section>
 
-    <section class="slide stats stats-method" data-title="We like maths" aria-hidden="true">
+    <section class="slide stats stats-method" data-title="World model" aria-hidden="true">
       <header class="slide-head compact">
-        <span class="kicker">08 · MEASURED, NOT MARKETED</span>
-        <h2>We like maths.<br /><span>So we built an answer key.</span></h2>
+        <span class="kicker">08 · WE LIKE MATHS</span>
+        <h2>We built the world model.</h2>
+        <p class="world-model-line">Treat goods like stocks: prices move, routes change, timing matters.</p>
       </header>
-      <div class="math-layout">
-        <div class="math-copy">
-          <div class="math-number"><strong>100</strong><span>paired market worlds</span></div>
-          <p>Same products. Same budgets. Same market shocks. Only the decision policy changes.</p>
-          <div class="math-tags"><span>seeded</span><span>replayable</span><span>paired</span></div>
-        </div>
-        <figure class="chart-frame timeline-chart">
+      <div class="world-model-layout">
+        <figure class="chart-frame timeline-chart world-contact-sheet">
           <img src="assets/stats/all-runs.svg" alt="One hundred paired simulated market timelines" />
-          <figcaption>100 markets × 90 days · every run can be replayed</figcaption>
+          <figcaption>100 paired markets × 90 days · seeded and replayable</figcaption>
         </figure>
+        <div class="world-count"><strong>100</strong><span>market worlds</span></div>
+      </div>
+    </section>
+
+    <section class="slide stats stats-run" data-title="One market close-up" aria-hidden="true">
+      <header class="slide-head compact">
+        <span class="kicker">09 · ONE MARKET, UP CLOSE</span>
+        <h2>One product. Ninety trading days.</h2>
+      </header>
+      <div class="single-run-layout">
+        <img src="assets/stats/run-006.svg" alt="A ninety-day price timeline where SolidHunt buys on day two for 125.38 euros and the casual shopper buys on day 33 for 152.35 euros" />
+        <aside class="run-takeaway"><span>RUN 006</span><strong>€26.97</strong><p>saved on one purchase</p><small>€125.38 vs €152.35 · budget €152.96</small></aside>
       </div>
     </section>
 
     <section class="slide stats stats-gap" data-title="Closer to optimal" aria-hidden="true">
       <header class="slide-head compact">
-        <span class="kicker">09 · PRICE QUALITY</span>
+        <span class="kicker">10 · PRICE QUALITY</span>
         <h2>51% closer to the optimum.</h2>
       </header>
       <div class="chart-focus">
         <img src="assets/stats/price-gap-comparison.svg" alt="Box plot comparing each strategy's distance from the best possible price" />
-        <aside class="chart-callout green-callout"><span>MEDIAN GAP</span><strong>€1.96</strong><p>SolidHunt</p><small>Casual shopper: €4.02</small></aside>
       </div>
     </section>
 
     <section class="slide stats stats-paired" data-title="Paired savings" aria-hidden="true">
       <header class="slide-head compact">
-        <span class="kicker">10 · PAIRED COMPARISON</span>
+        <span class="kicker">11 · PAIRED COMPARISON</span>
         <h2>When both buy, SolidHunt<br />wins or ties <span>82.6%</span> of the time.</h2>
       </header>
       <div class="paired-layout">
         <img src="assets/stats/paired-outcomes.svg" alt="Paired comparison showing SolidHunt cheaper 29 times, tied 28 times, and shopper cheaper 12 times" />
-        <div class="saving-badge"><span>AVERAGE PAIRED SAVING</span><strong>€7.36</strong></div>
+        <div class="saving-badge"><span>AVERAGE PAIRED SAVING</span><strong>€7.36</strong><small>4.8% of the average €154.44 shopper price</small></div>
       </div>
     </section>
 
     <section class="slide stats stats-honesty" data-title="The honest trade-off" aria-hidden="true">
       <header class="slide-head compact">
-        <span class="kicker">11 · THE HONEST TRADE-OFF</span>
+        <span class="kicker">12 · THE HONEST TRADE-OFF</span>
         <h2>We optimize the deal.<br />Not the purchase count.</h2>
       </header>
       <div class="honesty-layout">
@@ -310,25 +309,25 @@
 
     <section class="slide team" data-title="Team" aria-hidden="true">
       <header class="slide-head compact">
-        <span class="kicker">12 · THE TEAM</span>
+        <span class="kicker">13 · THE TEAM</span>
         <h2>Four builders. One product.</h2>
       </header>
       <div class="team-grid">
         <article class="person">
           <img src="assets/team/wiktor-zoga.jpg" alt="Portrait of Wiktor Zoga" />
-          <div><h3>Wiktor Zoga</h3><p>Mathematics + AI · Huawei algorithm engineer</p></div>
+          <div><h3>Wiktor Zoga</h3><p>University of Wrocław</p></div>
         </article>
         <article class="person">
           <img src="assets/team/jan-barganowski.jpg" alt="Portrait of Jan Barganowski" />
-          <div><h3>Jan Barganowski</h3><p>Data Science at Columbia · published researcher</p></div>
+          <div><h3>Jan Barganowski</h3><p>Columbia University</p></div>
         </article>
         <article class="person">
           <img src="assets/team/mateusz-lickindorf.jpg" alt="Portrait of Mateusz Lickindorf" />
-          <div><h3>Mateusz Lickindorf</h3><p>Medicine + Trusted AI · founder of Oncosort</p></div>
+          <div><h3>Mateusz Lickindorf</h3><p>Medical doctor · WUST</p></div>
         </article>
         <article class="person">
           <img src="assets/team/krzysztof-romanowski.jpg" alt="Portrait of Krzysztof Romanowski" />
-          <div><h3>Krzysztof Romanowski</h3><p>Computer vision + autonomous systems · AI founder</p></div>
+          <div><h3>Krzysztof Romanowski</h3><p>Łukasiewicz Research Network</p></div>
         </article>
       </div>
     </section>
@@ -347,7 +346,7 @@
   <nav class="deck-nav" aria-label="Presentation controls">
     <button class="nav-button" id="prev" aria-label="Previous slide">←</button>
     <div class="progress-track" aria-hidden="true"><i id="progress"></i></div>
-    <span id="counter" aria-label="Slide number">01 / 14</span>
+    <span id="counter" aria-label="Slide number">01 / 15</span>
     <button class="nav-button" id="next" aria-label="Next slide">→</button>
   </nav>
 
