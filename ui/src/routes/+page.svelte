@@ -7,7 +7,7 @@
 	import { fly, slide } from 'svelte/transition';
 	import { postIntake, postClarify } from '$lib/api.js';
 	import { intakeByHunt, stash } from '$lib/stores.js';
-	import SoftAurora from '$lib/components/SoftAurora.svelte';
+	import AuroraBackdrop from '$lib/components/AuroraBackdrop.svelte';
 
 	// brand: respect reduced motion — collapse every morph to an instant swap
 	const reducedMotion =
@@ -30,15 +30,18 @@
 			: 'Buys the best qualifying deal right now.'
 	);
 
-	const examples = [
-		'Nike Dunk Low Panda, size 43, under €80 delivered',
-		'Omega Seamaster on a €2,400 budget, within 30 days',
-		'AirPods Pro under €200 — buy now'
-	];
+	// The user's first message is only committed to the chat if the intake
+	// actually needs clarification — otherwise the composer would flip into
+	// reply mode for a frame and the navigation morph would capture it.
+	let pendingFirst = null;
 
 	function onResult(res) {
 		if (res.status === 'NEEDS_INFO') {
 			intakeId = res.intake_id;
+			if (pendingFirst) {
+				chat = [{ role: 'user', lines: [pendingFirst] }];
+				pendingFirst = null;
+			}
 			chat.push({ role: 'agent', lines: res.questions });
 			return;
 		}
@@ -69,7 +72,7 @@
 				// the text) and pass mode explicitly too.
 				const finalText =
 					mode === 'IMMEDIATE' && !/\bnow\b/i.test(trimmed) ? `${trimmed} now` : trimmed;
-				chat = [{ role: 'user', lines: [finalText] }];
+				pendingFirst = finalText;
 				onResult(await postIntake(finalText, mode));
 			}
 		} catch (e) {
@@ -86,28 +89,11 @@
 		}
 	}
 
-	function useExample(example) {
-		text = example;
-		autogrow();
-		ta?.focus();
-	}
 </script>
 
 <svelte:head><title>SolidHunt — New hunt</title></svelte:head>
 
-<div class="aurora" aria-hidden="true">
-	<SoftAurora
-		speed={0.5}
-		scale={1.4}
-		brightness={1.35}
-		color1="#43f27e"
-		color2="#a7f9c5"
-		bandHeight={0.68}
-		bandSpread={1.1}
-		layerOffset={2.5}
-		mouseInfluence={0.2}
-	/>
-</div>
+<AuroraBackdrop />
 
 <section class="home" class:started>
 	<header class="hero">
@@ -209,25 +195,9 @@
 		</div>
 	</div>
 
-	{#if !started}
-		<div class="examples" transition:slide={{ duration: dur(300) }}>
-			{#each examples as example (example)}
-				<button type="button" class="chip" onclick={() => useExample(example)}>
-					{example}
-				</button>
-			{/each}
-		</div>
-	{/if}
 </section>
 
 <style>
-	.aurora {
-		position: fixed;
-		inset: 0;
-		z-index: -1;
-		pointer-events: none;
-	}
-
 	.home {
 		min-height: calc(100dvh - 200px);
 		max-width: 720px;
@@ -250,6 +220,7 @@
 		line-height: 1;
 		margin: 0 0 12px;
 		letter-spacing: -0.02em;
+		view-transition-name: sh-title; /* morphs into the confirm-page title */
 		transition:
 			font-size 0.35s ease,
 			margin 0.35s ease;
@@ -277,6 +248,7 @@
 		display: flex;
 		flex-direction: column;
 		gap: 8px;
+		view-transition-name: sh-card; /* morphs into the confirm mandate card */
 	}
 
 	.composer:focus-within {
@@ -368,25 +340,6 @@
 		background: #35d96c;
 	}
 
-	/* ---- example chips ---- */
-	.examples {
-		display: flex;
-		flex-wrap: wrap;
-		justify-content: center;
-		gap: 8px;
-	}
-
-	.chip {
-		font-size: 14px;
-		color: var(--ink-muted);
-		background: rgb(255 255 255 / 70%);
-		padding: 6px 14px;
-		border-radius: 999px;
-	}
-
-	.chip:hover {
-		color: var(--ink);
-	}
 
 	.chat-line {
 		margin: 0;

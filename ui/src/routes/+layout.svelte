@@ -1,7 +1,24 @@
 <script>
 	import '../app.css';
+	import { onNavigate } from '$app/navigation';
 
 	let { children } = $props();
+
+	// Morph between screens with the View Transitions API (SvelteKit's
+	// documented pattern). Elements sharing a view-transition-name across
+	// pages (composer → mandate card, page titles, the aurora) animate from
+	// one into the other; everything else cross-fades. No-ops on browsers
+	// without support and under prefers-reduced-motion.
+	onNavigate((navigation) => {
+		if (!document.startViewTransition) return;
+		if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+		return new Promise((resolve) => {
+			document.startViewTransition(async () => {
+				resolve();
+				await navigation.complete;
+			});
+		});
+	});
 </script>
 
 <header class="site-header">

@@ -20,20 +20,18 @@
 
 	const layout = $derived.by(() => {
 		const xMax = Math.max(currentTick, points.length ? points[points.length - 1].tick : 0, 10);
-		const ys = points.map((p) => p.y);
-		if (capN != null) ys.push(capN);
-		if (!ys.length) ys.push(0, 100);
-		let yMin = Math.min(...ys);
-		let yMax = Math.max(...ys);
-		if (yMin === yMax) {
-			yMin -= 1;
-			yMax += 1;
+		// Stable frame: with a cap the y-axis is ALWAYS 0 → 2×cap, so the line
+		// never rescales under the viewer's eyes and the cap sits mid-chart.
+		let yMin = 0;
+		let yMax;
+		if (capN != null) {
+			yMax = capN * 2;
+		} else {
+			const ys = points.length ? points.map((p) => p.y) : [100];
+			yMax = Math.max(...ys) * 1.15 || 100;
 		}
-		const pad = (yMax - yMin) * 0.08;
-		yMin -= pad;
-		yMax += pad;
 		const x = (t) => M.left + (t / xMax) * IW;
-		const y = (v) => M.top + (1 - (v - yMin) / (yMax - yMin)) * IH;
+		const y = (v) => M.top + (1 - (Math.min(v, yMax) - yMin) / (yMax - yMin)) * IH;
 
 		// running observed-min series (dashed)
 		let min = Infinity;
@@ -73,7 +71,7 @@
 
 <figure class="chart card">
 	<figcaption>
-		<h3>Best landed per tick</h3>
+		<h3>Best all-in price, day by day</h3>
 	</figcaption>
 
 	<svg
@@ -93,7 +91,7 @@
 				class="grid"
 			/>
 			<text x={M.left - 8} y={layout.y(v) + 4} class="axis" text-anchor="end">
-				€{v.toFixed(2)}
+				€{Math.round(v)}
 			</text>
 		{/each}
 		{#each layout.xTicks as t (t)}
@@ -110,7 +108,7 @@
 				class="cap-line"
 			/>
 			<text x={W - M.right} y={layout.y(capN) - 6} class="cap-label" text-anchor="end">
-				cap {eur(cap)}
+				your ceiling {eur(cap)}
 			</text>
 		{/if}
 
@@ -157,17 +155,17 @@
 			{@const ty = Math.max(layout.y(hover.y) - 44, M.top)}
 			<g class="tooltip" transform="translate({tx},{ty})">
 				<rect width="155" height="38" rx="6" />
-				<text x="10" y="16">tick {hover.tick} · {hover.action}</text>
-				<text x="10" y="31" class="tt-val">landed {eur(hover.landedStr)}</text>
+				<text x="10" y="16">day {hover.tick} · {hover.action}</text>
+				<text x="10" y="31" class="tt-val">{eur(hover.landedStr)} all-in</text>
 			</g>
 		{/if}
 	</svg>
 
 	<!-- legend: identity is never color-alone -->
 	<div class="legend small">
-		<span><svg width="18" height="10"><line x1="0" y1="5" x2="18" y2="5" class="series" /></svg> best landed</span>
-		<span><svg width="18" height="10"><line x1="0" y1="5" x2="18" y2="5" class="min-line" /></svg> observed min</span>
-		<span><svg width="18" height="10"><line x1="0" y1="5" x2="18" y2="5" class="cap-line" /></svg> cap</span>
+		<span><svg width="18" height="10"><line x1="0" y1="5" x2="18" y2="5" class="series" /></svg> best all-in price</span>
+		<span><svg width="18" height="10"><line x1="0" y1="5" x2="18" y2="5" class="min-line" /></svg> lowest seen</span>
+		<span><svg width="18" height="10"><line x1="0" y1="5" x2="18" y2="5" class="cap-line" /></svg> your ceiling</span>
 		<span><svg width="12" height="12"><circle cx="6" cy="6" r="4.5" class="m-buy" /></svg> BUY</span>
 		<span><svg width="12" height="12"><circle cx="6" cy="6" r="4" class="m-alert" /></svg> ALERT</span>
 		<span><svg width="14" height="14"><rect x="3" y="3" width="8" height="8" class="m-ask" transform="rotate(45 7 7)" /></svg> ASK</span>

@@ -16,8 +16,12 @@
 	import ReceiptCard from '$lib/components/ReceiptCard.svelte';
 	import OrderCard from '$lib/components/OrderCard.svelte';
 	import AskModal from '$lib/components/AskModal.svelte';
+	import AuroraBackdrop from '$lib/components/AuroraBackdrop.svelte';
 
 	const huntId = page.params.id;
+	// 3× the server default (300ms/day): the hunt should read as a story, not
+	// a blur — slow enough to follow, fast enough to demo.
+	const TICK_MS = 900;
 	const EVENT_TYPES = ['tick', 'receipt', 'ask', 'status', 'order', 'done'];
 
 	let mandate = $state(null);
@@ -121,7 +125,7 @@
 	}
 
 	async function revoke() {
-		if (!window.confirm('Revoke the mandate? The hunt stops this tick and will not buy.')) return;
+		if (!window.confirm('Stop the hunt? SolidHunt will stand down and buy nothing.')) return;
 		error = '';
 		try {
 			await revokeHunt(huntId);
@@ -144,7 +148,7 @@
 					error = `Hunt is ${hunt.status} — start it from the confirm screen before monitoring.`;
 					return;
 				}
-				es = new EventSource(eventsUrl(huntId));
+				es = new EventSource(eventsUrl(huntId, TICK_MS));
 				for (const t of EVENT_TYPES) {
 					es.addEventListener(t, (e) => handle(JSON.parse(e.data)));
 				}
@@ -167,7 +171,9 @@
 	});
 </script>
 
-<svelte:head><title>SolidHunt — Monitor</title></svelte:head>
+<svelte:head><title>SolidHunt — Watching</title></svelte:head>
+
+<AuroraBackdrop />
 
 <div class="head-row">
 	<h1>Watching the market</h1>
@@ -176,17 +182,18 @@
 			{#if finalStatus}
 				{finalStatus}
 			{:else if clockPaused}
-				clock paused — awaiting your decision
+				paused — your call to make
 			{:else if paused}
 				display paused
 			{:else}
-				<span class="pulse" aria-hidden="true"></span> hunting · tick {currentTick}
+				<span class="pulse" aria-hidden="true"></span>
+				day {currentTick}{mandate?.expires_tick ? ` of ${mandate.expires_tick}` : ''} · hunting
 			{/if}
 		</span>
 		<button onclick={togglePause} disabled={!!finalStatus}>
 			{paused ? 'Resume' : 'Pause'}
 		</button>
-		<button class="danger" onclick={revoke} disabled={!!finalStatus}>Revoke mandate</button>
+		<button class="danger" onclick={revoke} disabled={!!finalStatus}>Stop the hunt</button>
 	</div>
 </div>
 
@@ -196,18 +203,18 @@
 
 {#if finalStatus === 'REVOKED' || status === 'REVOKED'}
 	<div class="banner terminal" role="status">
-		Mandate revoked. The hunt is over — nothing will be bought.
+		Hunt stopped. Nothing was bought, and nothing will be.
 	</div>
 {:else if finalStatus === 'PURCHASED'}
 	<div class="banner success" role="status">
-		Purchase complete — opening your receipt…
+		Deal secured — opening your receipt…
 		<a href="/hunt/{huntId}/receipt">View receipt</a>
 	</div>
 {/if}
 
 <PriceChart {points} cap={mandate?.cap_landed_eur ?? null} {currentTick} />
 
-<h2 class="feed-title">Event feed</h2>
+<h2 class="feed-title">What's happened so far</h2>
 <div class="feed" aria-live="polite">
 	{#each feed as item (item.key)}
 		{#if item.kind === 'receipt'}
@@ -217,10 +224,10 @@
 		{:else if item.kind === 'status'}
 			<div class="card status-card small">
 				{#if item.payload.status === 'REVOKED'}
-					<span class="badge badge-escalate">REVOKED</span> Mandate revoked at tick {item.tick}.
+					<span class="badge badge-escalate">REVOKED</span> Hunt stopped on day {item.tick}.
 				{:else if item.payload.ask_resolution}
 					<span class="badge badge-ask">ASK {item.payload.ask_resolution}</span>
-					Clock resumed at tick {item.tick}.
+					The hunt carries on — day {item.tick}.
 				{/if}
 			</div>
 		{/if}

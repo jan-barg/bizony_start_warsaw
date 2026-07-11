@@ -12,7 +12,7 @@
 <article class="card receipt-card">
 	<header>
 		<ActionBadge action={receipt.action} />
-		<span class="muted small num">tick {receipt.tick}</span>
+		<span class="muted small num">day {receipt.tick}</span>
 		{#if receipt.escalation_tier}
 			<span class="muted small">tier {receipt.escalation_tier}</span>
 		{/if}
