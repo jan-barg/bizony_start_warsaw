@@ -22,10 +22,6 @@ from dealhunter.engine.landed import assemble
 
 ROOT = Path(__file__).resolve().parent.parent
 CFG = Constants()
-engine_pending = pytest.mark.xfail(
-    reason="engine not implemented yet (Stage 0) — flips green on feat/engine merge",
-    strict=False,
-)
 
 
 def world() -> World:
@@ -186,7 +182,6 @@ def test_v8a_min_basket_exact_boundary():
 
 
 # --------------------------------------------------------------------- V9/V10
-@engine_pending
 def test_v9_stopping_sanity():
     from dealhunter.engine.stopping import p_better  # module lands with feat/engine
     hist = [D("100")] * 12 + [D("90")] * 8            # 8 of 20 beat current−δ
