@@ -42,8 +42,8 @@
 - [ ] **S3:** Judge View (dossier vs receipts side-by-side, NEVER-vs-ALLOW split-screen), speed controls (server already supports `?tick_ms=`)
 
 ### Person D — matcher + LLM
-**Done:** WO-3 complete, merged via PR #1 — matcher tiers 1–3 (57 tests), veto-only tier 4, OpenAI replay client + strict SQLite cache, deterministic intake gate + vision clarify loop, placeholder-safe narration, warmed cache artifact + manifest tooling.
-**Post-merge integration checklist (integrator-authorized status update; all implementation work stays on `feat/matcher-llm`):**
+**Done:** WO-3 tasks 1–6 and the preliminary reviewed cache merged via PR #1 — matcher tiers 1–3 (57 tests), veto-only tier 4, OpenAI replay client + strict SQLite cache, deterministic intake gate + vision clarify loop, placeholder-safe narration, cache artifact + manifest tooling. **WO-3 task 7 remains open until the exact seed-42 S3 demo cache is warmed and committed.**
+**Post-merge integration checklist (canonical remaining-work list; integrator-authorized status update; all implementation work stays on `feat/matcher-llm`):**
 
 **S2 — blocked until B's monitor branch lands on `develop`:**
 - [ ] Under this work order's explicit branch-sync consent, fetch and merge the latest `origin/develop`; never merge B's feature branch directly or rebase shared history.

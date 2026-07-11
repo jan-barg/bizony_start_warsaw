@@ -88,10 +88,13 @@ Historical read-only overlay on pre-fix `origin/develop` (no merge/rebase):
 
 ## Integration obligations
 
-1. Sync `origin/develop` only with explicit branch-change consent, then resolve the generator/matcher observability contract above.
-2. Add Person B matcher memoization; policy safety already has a four-flag integration gate.
-3. Preserve the committed reviewed cache as a versioned replay input; any future rewarm requires new human approval.
-4. Run the full offline gate twice from the committed cache; verify missing keys raise `LLMCacheMiss`.
+`WORK-ORDER-STATUS.md` is the canonical remaining-work checklist; this report
+records evidence and retains explicitly labeled historical snapshots.
+
+1. **Complete:** synchronized `origin/develop` under explicit consent; the generator/matcher observability contract now passes at 96.952224% with zero missed traps.
+2. **Pending B:** add run-scoped matcher memoization; policy safety already has a four-flag integration gate.
+3. **Pending S3:** preserve the committed reviewed cache until a validated seed-42 candidate replaces it; any live rewarm requires fresh human approval immediately beforehand.
+4. **Pending final gate:** run the full offline path twice from the committed cache and verify missing keys raise `LLMCacheMiss`.
 
 ## Exact acceptance commands
 
