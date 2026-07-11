@@ -105,6 +105,26 @@ class FixtureEngine:
                     size = Decimal(n)
                     break
 
+        # Cap fallback: a clarify reply is usually a bare number ("75") with no
+        # currency marker, which the regex above misses — the loop would re-ask
+        # forever. Treat leftover bare numbers as cap candidates; the LATEST
+        # wins (the whole transcript is re-parsed, so the newest answer is last).
+        if cap is None:
+            scrubbed = re.sub(r"\b[a-z]{1,3}\d{3,5}-\d{2,4}\b", " ", text)   # style codes
+            scrubbed = re.sub(r"in \d+ days", " ", scrubbed)                  # deadlines
+            consumed = [size] if size is not None else []
+            candidates: list[Decimal] = []
+            for n in re.findall(r"\b(\d{2,4}(?:\.\d{1,2})?)\b", scrubbed):
+                v = Decimal(n)
+                if v < 20 or any(n == tok for tok, _ in self.PRODUCTS):
+                    continue                                                  # too small / "990"
+                if v in consumed:
+                    consumed.remove(v)                                        # the size, once
+                    continue
+                candidates.append(v)
+            if candidates:
+                cap = candidates[-1]
+
         missing = [k for k, v in (("product_query", product), ("size_eu", size),
                                   ("cap_landed_eur", cap)) if v is None]
         if missing:

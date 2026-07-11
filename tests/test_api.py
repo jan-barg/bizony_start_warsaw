@@ -71,6 +71,26 @@ class TestIntake:
         assert r.json()["status"] == "NEEDS_INFO"
         assert r.json()["missing"] == ["cap_landed_eur"]
 
+    def test_bare_number_clarify_reply_fills_cap(self, client):
+        """Regression: 'Nike Dunk Low Panda, Size 44 now' → asked for cap →
+        user answers a bare '75' → must resolve, not re-ask forever."""
+        r = client.post("/intake", json={"input": {"text": "Nike Dunk Low Panda, Size 44 now"}})
+        assert r.json()["status"] == "NEEDS_INFO"
+        assert r.json()["missing"] == ["cap_landed_eur"]
+        r = client.post(f"/intake/{r.json()['intake_id']}/clarify", json={"text": "75"})
+        body = r.json()
+        assert body["status"] == "OK"
+        assert body["mandate"]["cap_landed_eur"] == "75"
+        assert body["mandate"]["mode"] == "IMMEDIATE"
+        assert body["brief"]["size_eu"] == "44"
+
+    def test_bare_number_not_misread_as_cap(self, client):
+        """Sizes, style codes, '990' product token, and deadlines never
+        become the cap via the bare-number fallback."""
+        r = client.post("/intake", json={"input": {"text": "new balance 990 DD1391-100 size 44, need in 10 days"}})
+        assert r.json()["status"] == "NEEDS_INFO"
+        assert r.json()["missing"] == ["cap_landed_eur"]
+
     def test_immediate_mode_and_deadline_parsed(self, client):
         r = client.post("/intake", json={"input": {"text": "jordan 1 size 44 under €300 now, need in 10 days"}})
         m = r.json()["mandate"]
