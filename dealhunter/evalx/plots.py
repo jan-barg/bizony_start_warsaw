@@ -20,6 +20,25 @@ OPTIMAL = "#2859C5"
 CAP = "#C52A22"
 
 
+def _policy_label(runs: list[RunEvaluation], attribute: str) -> str:
+    name = next(
+        (
+            decision.policy
+            for run in runs
+            if (decision := getattr(run, attribute)) is not None
+        ),
+        "SOLIDHUNT_IMPROVED_MONITOR" if attribute == "engine" else "CASUAL_CHECKOUT_3D",
+    )
+    if name == "SOLIDHUNT_IMPROVED_MONITOR":
+        return "SolidHunt improved monitor"
+    if name == "SOLIDHUNT_EVAL_MONITOR":
+        return "SolidHunt spec monitor"
+    if name.startswith("CASUAL_CHECKOUT_"):
+        interval = name.removeprefix("CASUAL_CHECKOUT_").removesuffix("D")
+        return f"Casual checkout shopper ({interval}-day)"
+    return name.replace("_", " ").title()
+
+
 def _write(path: Path, content: str) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
     path.write_text(content, encoding="utf-8")
@@ -135,8 +154,8 @@ def write_all_run_timelines(path: Path, runs: list[RunEvaluation]) -> None:
     lines.append('<text x="20" y="30" class="title">100 paired market timelines</text>')
     legend = [
         (OPTIMAL, "diamond", "Optimal legitimate price"),
-        (ENGINE, "circle", "SolidHunt eval monitor"),
-        (USER, "square", "Casual checkout shopper"),
+        (ENGINE, "circle", _policy_label(runs, "engine")),
+        (USER, "square", _policy_label(runs, "user")),
         (CAP, "line", "Budget cap"),
     ]
     x = 20
@@ -182,9 +201,9 @@ def write_detailed_timelines(directory: Path, runs: list[RunEvaluation]) -> None
             lines.append(f'<text x="{x:.1f}" y="430" text-anchor="middle" class="small">day {tick}</text>')
         engine_text = "miss" if run.engine is None else f"day {run.engine.tick}, €{run.engine.actual_landed_eur}"
         user_text = "miss" if run.user is None else f"day {run.user.tick}, €{run.user.actual_landed_eur}"
-        lines.append(f'<text x="70" y="460" class="small" fill="{ENGINE}">● SolidHunt: {escape(engine_text)}</text>')
-        lines.append(f'<text x="350" y="460" class="small" fill="{USER}">■ Casual shopper: {escape(user_text)}</text>')
-        lines.append(f'<text x="680" y="460" class="small" fill="{OPTIMAL}">◆ Optimal: day {run.optimal.tick}, €{optimal}</text>')
+        lines.append(f'<text x="70" y="460" class="small" fill="{ENGINE}">● {escape(_policy_label(runs, "engine"))}: {escape(engine_text)}</text>')
+        lines.append(f'<text x="380" y="460" class="small" fill="{USER}">■ {escape(_policy_label(runs, "user"))}: {escape(user_text)}</text>')
+        lines.append(f'<text x="850" y="460" class="small" fill="{OPTIMAL}">◆ Optimal: day {run.optimal.tick}, €{optimal}</text>')
         lines.append("</svg>")
         _write(directory / f"{run.run_id}.svg", "\n".join(lines) + "\n")
 
@@ -212,8 +231,8 @@ def write_buy_timing(path: Path, runs: list[RunEvaluation]) -> None:
         x = left + run.user.tick / 89 * plot
         y = top + plot - run.engine.tick / 89 * plot
         lines.append(f'<circle cx="{x:.1f}" cy="{y:.1f}" r="5" fill="{ENGINE}" fill-opacity="0.58" stroke="{USER}" stroke-width="1.2"/>')
-    lines.append(f'<text x="{left+plot/2}" y="{top+plot+58}" text-anchor="middle" class="label">Casual shopper buy day</text>')
-    lines.append(f'<text x="28" y="{top+plot/2}" text-anchor="middle" class="label" transform="rotate(-90 28 {top+plot/2})">SolidHunt buy day</text>')
+    lines.append(f'<text x="{left+plot/2}" y="{top+plot+58}" text-anchor="middle" class="label">{escape(_policy_label(runs, "user"))} buy day</text>')
+    lines.append(f'<text x="28" y="{top+plot/2}" text-anchor="middle" class="label" transform="rotate(-90 28 {top+plot/2})">{escape(_policy_label(runs, "engine"))} buy day</text>')
     lines.append(f'<text x="750" y="130" class="label">{len(both)} paired purchases</text>')
     lines.append('<text x="750" y="162" class="small">Above diagonal: SolidHunt buys earlier</text>')
     lines.append('<text x="750" y="184" class="small">Below diagonal: SolidHunt waits longer</text>')
@@ -224,8 +243,8 @@ def write_buy_timing(path: Path, runs: list[RunEvaluation]) -> None:
 def write_regret_comparison(path: Path, runs: list[RunEvaluation]) -> None:
     series: list[tuple[str, str, list[float]]] = []
     for label, color, attribute in (
-        ("SolidHunt eval monitor", ENGINE, "engine"),
-        ("Casual checkout shopper", USER, "user"),
+        (_policy_label(runs, "engine"), ENGINE, "engine"),
+        (_policy_label(runs, "user"), USER, "user"),
     ):
         values = []
         for run in runs:
@@ -279,8 +298,8 @@ def write_outcomes(path: Path, runs: list[RunEvaluation]) -> None:
     )
     lines.append('<text x="40" y="38" class="title">Did each strategy complete a legitimate purchase?</text>')
     for lane, (label, attribute) in enumerate((
-        ("SolidHunt eval monitor", "engine"),
-        ("Casual checkout shopper", "user"),
+        (_policy_label(runs, "engine"), "engine"),
+        (_policy_label(runs, "user"), "user"),
     )):
         decisions = [getattr(run, attribute) for run in runs]
         legitimate = sum(decision is not None and decision.legitimate for decision in decisions)
@@ -306,6 +325,55 @@ def write_outcomes(path: Path, runs: list[RunEvaluation]) -> None:
         lines.append(f'<rect x="{legend_x}" y="365" width="14" height="14" fill="{color}"/>')
         lines.append(f'<text x="{legend_x+22}" y="377" class="small">{label}</text>')
         legend_x += 220
+    lines.append("</svg>")
+    _write(path, "\n".join(lines) + "\n")
+
+
+def write_shopper_sensitivity(
+    path: Path,
+    three_day_summary: dict[str, object],
+    weekly_summary: dict[str, object],
+) -> None:
+    """Compare SolidHunt with attentive and weekly shopper hypotheses."""
+    engine_name = three_day_summary["methodology"]["solid_hunt_policy"]
+    three_name = three_day_summary["methodology"]["regular_user_policy"]
+    weekly_name = weekly_summary["methodology"]["regular_user_policy"]
+    rows = [
+        ("SolidHunt improved", ENGINE, three_day_summary["policies"][engine_name]),
+        ("Shopper · every 3 days", USER, three_day_summary["policies"][three_name]),
+        ("Shopper · weekly", "#D49A4A", weekly_summary["policies"][weekly_name]),
+    ]
+    metrics = [
+        ("Legitimate purchase rate", "%", lambda item: 100 * item["legitimate_purchases"] / item["runs"]),
+        ("Mean gap from optimum", "€", lambda item: item["mean_legitimate_regret_eur"]),
+        ("Actual cap violations", "", lambda item: item["actual_cap_violations"]),
+    ]
+    width, height = 1280, 610
+    lines = _svg_start(
+        width,
+        height,
+        "Held-out shopper sensitivity comparison",
+        "Small multiples compare legitimate purchase rate, mean price gap, and cap violations for SolidHunt, an attentive three-day shopper, and a weekly shopper.",
+    )
+    lines.append('<text x="40" y="38" class="title">Held-out trade-off across attentive and weekly shoppers</text>')
+    panel_width = 390
+    for panel, (title, unit, accessor) in enumerate(metrics):
+        left = 40 + panel * 410
+        top = 100
+        values = [float(accessor(item)) for _, _, item in rows]
+        maximum = max(values + [1.0]) * 1.12
+        lines.append(f'<text x="{left}" y="{top-20}" class="label">{escape(title)}</text>')
+        for index, (label, color, item) in enumerate(rows):
+            value = float(accessor(item))
+            y = top + index * 115
+            bar = panel_width * value / maximum
+            lines.append(f'<text x="{left}" y="{y+17}" class="small">{escape(label)}</text>')
+            lines.append(f'<rect x="{left}" y="{y+30}" width="{panel_width}" height="34" fill="{SOFT}"/>')
+            lines.append(f'<rect x="{left}" y="{y+30}" width="{bar:.1f}" height="34" fill="{color}"/>')
+            formatted = f"{value:.0f}%" if unit == "%" else f"€{value:.2f}" if unit == "€" else f"{value:.0f}"
+            lines.append(f'<text x="{left+min(bar+8, panel_width-2):.1f}" y="{y+53}" class="label">{formatted}</text>')
+        lower = "higher is better" if panel == 0 else "lower is better"
+        lines.append(f'<text x="{left}" y="{top+365}" class="small">{lower}</text>')
     lines.append("</svg>")
     _write(path, "\n".join(lines) + "\n")
 

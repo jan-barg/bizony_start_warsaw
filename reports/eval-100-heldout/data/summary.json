@@ -1,0 +1,57 @@
+{
+  "methodology": {
+    "geo_arbitrage": "NEVER",
+    "horizon_ticks": 90,
+    "regular_user_policy": "CASUAL_CHECKOUT_3D",
+    "runs": 100,
+    "seeds": [
+      101,
+      200
+    ],
+    "solid_hunt_policy": "SOLIDHUNT_IMPROVED_MONITOR",
+    "templates_per_seed": 1
+  },
+  "paired": {
+    "both_purchased": 69,
+    "mean_user_minus_engine_landed_eur": 7.364782608695652,
+    "median_user_minus_engine_landed_eur": 0.0
+  },
+  "policies": {
+    "CASUAL_CHECKOUT_3D": {
+      "actual_cap_violations": 5,
+      "invalid_purchases": 0,
+      "legitimate_purchases": 82,
+      "mean_abs_timing_delta_ticks": 17.75609756097561,
+      "mean_checkout_understatement_eur": 5.682926829268292,
+      "mean_legitimate_regret_eur": 13.804756097560976,
+      "mean_signed_timing_delta_ticks": -14.878048780487806,
+      "median_legitimate_regret_eur": 4.02,
+      "miss_rate": 0.18,
+      "misses": 18,
+      "p90_legitimate_regret_eur": 28.95,
+      "purchase_legitimacy": 1.0,
+      "purchase_rate": 0.82,
+      "purchases": 82,
+      "runs": 100,
+      "std_legitimate_regret_eur": 26.431233613026187
+    },
+    "SOLIDHUNT_IMPROVED_MONITOR": {
+      "actual_cap_violations": 0,
+      "invalid_purchases": 0,
+      "legitimate_purchases": 79,
+      "mean_abs_timing_delta_ticks": 14.974683544303797,
+      "mean_checkout_understatement_eur": null,
+      "mean_legitimate_regret_eur": 7.657088607594937,
+      "mean_signed_timing_delta_ticks": -14.367088607594937,
+      "median_legitimate_regret_eur": 1.96,
+      "miss_rate": 0.21,
+      "misses": 21,
+      "p90_legitimate_regret_eur": 22.06,
+      "purchase_legitimacy": 1.0,
+      "purchase_rate": 0.79,
+      "purchases": 79,
+      "runs": 100,
+      "std_legitimate_regret_eur": 11.229694265470728
+    }
+  }
+}

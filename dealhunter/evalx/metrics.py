@@ -165,9 +165,22 @@ def _aggregate_policy(runs: list[RunEvaluation], attribute: str) -> dict[str, ob
     }
 
 
+def _policy_name(runs: list[RunEvaluation], attribute: str, fallback: str) -> str:
+    return next(
+        (
+            decision.policy
+            for run in runs
+            if (decision := getattr(run, attribute)) is not None
+        ),
+        fallback,
+    )
+
+
 def summarize(runs: list[RunEvaluation]) -> dict[str, object]:
     engine = _aggregate_policy(runs, "engine")
     user = _aggregate_policy(runs, "user")
+    engine_name = _policy_name(runs, "engine", "SOLIDHUNT_IMPROVED_MONITOR")
+    user_name = _policy_name(runs, "user", "CASUAL_CHECKOUT_3D")
     both = [
         (run.engine, run.user)
         for run in runs
@@ -184,12 +197,12 @@ def summarize(runs: list[RunEvaluation]) -> dict[str, object]:
             "templates_per_seed": 1,
             "horizon_ticks": len(runs[0].timeline) if runs else 0,
             "geo_arbitrage": "NEVER",
-            "solid_hunt_policy": "implemented engine money/trust layers + eval implementation of spec §5.7",
-            "regular_user_policy": "CASUAL_CHECKOUT_3D",
+            "solid_hunt_policy": engine_name,
+            "regular_user_policy": user_name,
         },
         "policies": {
-            "SOLIDHUNT_EVAL_MONITOR": engine,
-            "CASUAL_CHECKOUT_3D": user,
+            engine_name: engine,
+            user_name: user,
         },
         "paired": {
             "both_purchased": len(both),

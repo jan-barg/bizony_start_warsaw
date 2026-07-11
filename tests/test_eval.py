@@ -16,6 +16,7 @@ from dealhunter.core.enums import HuntStatus, Mode
 from dealhunter.core.models import Brief, Hunt, Mandate, canonical_json
 from dealhunter.engine.loop import run_immediate
 from dealhunter.evalx.metrics import run_row
+from dealhunter.evalx.plots import write_shopper_sensitivity
 from dealhunter.evalx.policies import EvalTemplate, evaluation_world
 from dealhunter.evalx.runner import evaluate_runs, write_artifacts
 from dealhunter.llm.client import NullClient
@@ -32,6 +33,9 @@ def test_four_seed_run_shape_and_full_timelines(small_runs) -> None:
     assert [run.seed for run in small_runs] == [1, 2, 3, 4]
     assert all(len(run.timeline) == 90 for run in small_runs)
     assert all(run.optimal.best_legitimate_eur <= run.template.cap_eur for run in small_runs)
+    assert all(run.engine is not None for run in small_runs)
+    assert all(run.engine.legitimate for run in small_runs)
+    assert all(run.engine.actual_landed_eur <= run.template.cap_eur for run in small_runs)
 
 
 def test_regular_shopper_only_buys_on_scheduled_checks(small_runs) -> None:
@@ -55,7 +59,8 @@ def test_legitimate_regret_decomposes_exactly(small_runs) -> None:
 
 def test_artifacts_are_parseable_and_have_expected_rows(tmp_path: Path, small_runs) -> None:
     output = tmp_path / "eval"
-    write_artifacts(output, small_runs)
+    summary = write_artifacts(output, small_runs)
+    write_shopper_sensitivity(output / "plots/shopper-sensitivity.svg", summary, summary)
     with (output / "data/runs.csv").open(newline="") as handle:
         assert len(list(csv.DictReader(handle))) == 4
     with (output / "data/timelines.csv").open(newline="") as handle:
@@ -65,9 +70,10 @@ def test_artifacts_are_parseable_and_have_expected_rows(tmp_path: Path, small_ru
         output / "plots/buy-timing.svg",
         output / "plots/price-gap-comparison.svg",
         output / "plots/outcomes.svg",
+        output / "plots/shopper-sensitivity.svg",
         *sorted((output / "plots/timelines").glob("*.svg")),
     ]
-    assert len(svgs) == 8
+    assert len(svgs) == 9
     for svg in svgs:
         assert ET.parse(svg).getroot().tag.endswith("svg")
 
@@ -129,8 +135,8 @@ def test_projected_world_preserves_immediate_buy_receipt() -> None:
     assert canonical_json(full_receipt) == canonical_json(projected_receipt)
 
 
-def test_eval_monitor_is_explicitly_not_production_monitor(small_runs) -> None:
+def test_improved_monitor_is_explicitly_not_production_monitor(small_runs) -> None:
     assert all(
-        run.engine is None or run.engine.policy == "SOLIDHUNT_EVAL_MONITOR"
+        run.engine is None or run.engine.policy == "SOLIDHUNT_IMPROVED_MONITOR"
         for run in small_runs
     )

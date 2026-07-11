@@ -226,6 +226,7 @@ def _engine_candidates(
     cfg: Constants,
     mandate: Mandate,
     events: dict[tuple[str, int], object],
+    require_positive_ev: bool = True,
 ) -> list[_EngineCandidate]:
     candidates: list[_EngineCandidate] = []
     vendors = {vendor.id: vendor for vendor in world.vendors}
@@ -244,7 +245,7 @@ def _engine_candidates(
                 continue
             trust, _flags = trust_score(vendor, quote, world, cfg)
             ev = expected_value(quote, trust, template.cap_eur, None, cfg)
-            if trust < cfg.TRUST_FLOOR or ev <= 0:
+            if trust < cfg.TRUST_FLOOR or (require_positive_ev and ev <= 0):
                 continue
             candidates.append(_EngineCandidate(quote=quote, trust=trust, ev_eur=ev))
     return candidates
@@ -263,7 +264,7 @@ def _trend_slope(values: list[Decimal]) -> Decimal:
     return sum((x - mean_x) * (y - mean_y) for x, y in zip(xs, ys)) / denominator
 
 
-def solidhunt_eval_monitor(
+def solidhunt_spec_monitor(
     world: World,
     template: EvalTemplate,
     cfg: Constants,
@@ -278,6 +279,7 @@ def solidhunt_eval_monitor(
     for tick in range(world.horizon):
         candidates = _engine_candidates(
             reduced, world, template, tick, cfg, mandate, events,
+            require_positive_ev=True,
         )
         if not candidates:
             continue
@@ -326,3 +328,102 @@ def solidhunt_eval_monitor(
             p_better=p_better,
         )
     return None
+
+
+def solidhunt_improved_monitor(
+    world: World,
+    template: EvalTemplate,
+    cfg: Constants,
+    *,
+    final_window_ticks: int = 14,
+    observed_low_quantile: Decimal = Decimal("0.25"),
+) -> PurchaseDecision | None:
+    """Safety-preserving monitor tuned for purchase coverage.
+
+    Hard mandate gates and the observable trust floor remain mandatory.  EV is
+    used to rank safe candidates instead of suppressing every negative-EV
+    quote, because the additive trust score is not a calibrated probability.
+    The timing rule buys an observed-low quote after the minimum observation
+    period, with a declared final-window fallback that avoids a single-day
+    stock lottery at tick 89.
+    """
+    if not 1 <= final_window_ticks <= world.horizon:
+        raise ValueError("final_window_ticks outside world horizon")
+    if not Decimal("0") < observed_low_quantile <= Decimal("1"):
+        raise ValueError("observed_low_quantile must be in (0, 1]")
+    reduced = evaluation_world(world, template)
+    mandate = evaluation_mandate(template, world.horizon)
+    events = _event_index(reduced)
+    history: list[Decimal] = []
+    final_window_start = world.horizon - final_window_ticks
+
+    for tick in range(world.horizon):
+        candidates = _engine_candidates(
+            reduced,
+            world,
+            template,
+            tick,
+            cfg,
+            mandate,
+            events,
+            require_positive_ev=False,
+        )
+        if not candidates:
+            continue
+        best_landed = min(candidate.quote.landed_eur for candidate in candidates)
+        history.append(best_landed)
+        rank = Decimal(sum(value <= best_landed for value in history)) / Decimal(len(history))
+        observed_low = (
+            len(history) >= cfg.MIN_OBS
+            and rank <= observed_low_quantile
+            and best_landed <= min(history) + cfg.GOOD_DEAL_MARGIN_EUR
+        )
+        calibrated_floor = (cfg.TRUST_FLOOR + cfg.TRUST_HIGH) / Decimal("2")
+        strong_candidates = [
+            candidate for candidate in candidates
+            if candidate.trust >= cfg.TRUST_HIGH
+            or (
+                candidate.trust >= calibrated_floor
+                and candidate.quote.landed_eur
+                <= template.cap_eur - cfg.GOOD_DEAL_MARGIN_EUR
+            )
+        ]
+        high_confidence_deal = bool(strong_candidates)
+        final_window = tick >= final_window_start
+        if not observed_low and not high_confidence_deal and not final_window:
+            continue
+        selection_pool = strong_candidates if high_confidence_deal else candidates
+        chosen = min(
+            selection_pool,
+            key=lambda candidate: (
+                -candidate.ev_eur,
+                candidate.quote.landed_eur,
+                candidate.quote.listing_id,
+                candidate.quote.kind,
+                candidate.quote.middleman_id or "",
+            ),
+        )
+        quote = chosen.quote
+        return PurchaseDecision(
+            policy="SOLIDHUNT_IMPROVED_MONITOR",
+            tick=tick,
+            listing_id=quote.listing_id,
+            route_kind=quote.kind,
+            middleman_id=quote.middleman_id,
+            actual_landed_eur=quote.landed_eur,
+            perceived_eur=None,
+            legitimate=_is_legitimate(world, template, quote.listing_id),
+            trap_types=_trap_types(world, quote.listing_id),
+            reason=(
+                "high_confidence_under_target"
+                if high_confidence_deal
+                else "observed_low" if observed_low
+                else "final_window_fallback"
+            ),
+            p_better=None,
+        )
+    return None
+
+
+# Backwards-compatible name used by the first diagnostic report.
+solidhunt_eval_monitor = solidhunt_spec_monitor
