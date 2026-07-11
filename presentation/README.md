@@ -10,4 +10,4 @@ Then visit `http://localhost:8765/presentation/`.
 
 Controls: arrow keys, Space, Page Up/Down, Home/End, `F` for fullscreen, and `O` for slide overview.
 
-The deck uses the repository's SolidHunt logo and brand palette. Market claims link to their public sources. Product-mechanics slides link to the implementation and simulator documentation. The fuzzy matcher and comparative policy benchmark are explicitly labeled as pending rather than presented as measured results.
+The deck is self-contained inside `presentation/`, including the SolidHunt logo, product and team images, evaluation charts, and browser QA previews. Product-mechanics slides link to the implementation specification. The request-parsing and search-tree sequences are CSS animations; the evaluation section uses the measured charts in `assets/stats/`.

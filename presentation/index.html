@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <meta name="description" content="SolidHunt — the deal hunter that never sleeps." />
+  <meta name="description" content="SolidHunt — START x OpenAI Warsaw Hackathon presentation." />
   <title>SolidHunt — START x OpenAI Warsaw Hackathon</title>
   <link rel="stylesheet" href="styles.css" />
 </head>
@@ -11,7 +11,7 @@
   <main class="deck" aria-live="polite">
     <section class="slide cover active" data-title="SolidHunt" aria-hidden="false">
       <div class="cover-copy">
-        <img class="brand-logo" src="../assets/brand/solidhunt-logo.svg" alt="SolidHunt" />
+        <img class="brand-logo" src="assets/brand/solidhunt-logo.svg" alt="SolidHunt" />
         <h1>The deal hunter<br /><span>that never sleeps.</span></h1>
         <p class="cover-meta">START X OPENAI WARSAW HACKATHON</p>
       </div>
@@ -101,92 +101,20 @@
         <article class="noise-card compare-noise">
           <span class="noise-label">BEST PRICE*</span>
           <strong>€74.20</strong>
-          <p>*before shipping, VAT and import</p>
+          <p class="scam-note">*before shipping, VAT and import</p>
         </article>
         <article class="noise-card ui-noise">
-          <span class="noise-label">13 TABS OPEN</span>
-          <div class="tiny-tabs"><i></i><i></i><i></i><i></i><i></i></div>
+          <span class="noise-label">SEARCH FATIGUE</span>
+          <div class="tab-count"><strong>13</strong><span>open tabs</span></div>
+          <div class="tab-trail"><span>shops</span><span>coupons</span><span>reviews</span><span>shipping</span></div>
           <p>No answer. Just more searching.</p>
         </article>
-        <div class="pain-proof">
-          <div><strong>6 in 10</strong><span>comparison prices were not clearly explained</span></div>
-          <div><strong>36%</strong><span>abandoned cross-border carts over surprise customs</span></div>
-        </div>
-      </div>
-      <div class="source-group">
-        <a class="source" href="https://commission.europa.eu/topics/consumers/consumer-rights-and-complaints/enforcement-consumer-protection/sweeps_en" target="_blank" rel="noreferrer">European Commission sweep, 2026</a>
-        <a class="source" href="https://www.dhl.com/content/dam/dhl/local/global/dhl-ecommerce/documents/pdf/g0-dhl-e-commerce-trends-report-2025.pdf" target="_blank" rel="noreferrer">DHL E-Commerce Trends, 2025</a>
       </div>
     </section>
 
-    <section class="slide reveal" data-title="Meet SolidHunt" aria-hidden="true">
-      <div class="reveal-inner">
-        <span class="kicker">03 · THE REVEAL</span>
-        <h2>Jan, meet</h2>
-        <img src="../assets/brand/solidhunt-logo.svg" alt="SolidHunt" />
-        <p>Say the product.<br />Set the ceiling.<br /><strong>We do the hunting.</strong></p>
-      </div>
-    </section>
-
-    <section class="slide demo intake-demo" data-title="One-sentence intake" aria-hidden="true">
+    <section class="slide cost" data-title="The real price" aria-hidden="true">
       <header class="slide-head compact">
-        <span class="kicker">04 · DEMO</span>
-        <h2>One sentence becomes a clear request.</h2>
-      </header>
-      <div class="app-window">
-        <div class="app-topbar">
-          <img src="../assets/brand/solidhunt-logo.svg" alt="SolidHunt" />
-          <span>New hunt</span>
-        </div>
-        <div class="intake-ui">
-          <label>What are you hunting?</label>
-          <div class="query-box">cow-print adidas samba, EU 43.5, max €100 delivered — no rush</div>
-          <div class="parsed-grid">
-            <div><span>PRODUCT</span><strong>Samba OG</strong></div>
-            <div><span>COLORWAY</span><strong>Crystal Linen / Ivory / Gum</strong></div>
-            <div><span>SIZE</span><strong>EU 43.5</strong></div>
-            <div><span>LANDED CAP</span><strong>€100.00</strong></div>
-            <div class="parsed-wide"><span>MODE</span><strong>Monitor · wait for the right moment</strong></div>
-          </div>
-          <button type="button" class="primary-button" tabindex="-1">Confirm &amp; start watching</button>
-        </div>
-      </div>
-      <p class="status-note">Prototype interface · the user approves the request before any action</p>
-    </section>
-
-    <section class="slide matcher" data-title="Fuzzy matching" aria-hidden="true">
-      <header class="slide-head compact">
-        <span class="kicker">05 · MATCHING</span>
-        <h2>Messy words. Exact target.</h2>
-      </header>
-      <div class="matcher-flow">
-        <div class="match-input">
-          <span>USER INPUT</span>
-          <strong>“samba cowprint 43,5”</strong>
-        </div>
-        <div class="match-arrow">→</div>
-        <div class="match-result">
-          <span>CANONICAL TARGET</span>
-          <strong>adidas Samba OG</strong>
-          <p>KI6669 · Crystal Linen / Ivory / Gum · EU 43.5</p>
-        </div>
-      </div>
-      <ol class="match-ladder">
-        <li><b>01</b><div><strong>Style code</strong><span>Exact is decisive.</span></div></li>
-        <li><b>02</b><div><strong>Catalog + aliases</strong><span>Normalize model, colorway, size.</span></div></li>
-        <li><b>03</b><div><strong>Token fuzz</strong><span>Accept only with a clear lead.</span></div></li>
-        <li><b>04</b><div><strong>LLM veto</strong><span>May reject. Never authorizes.</span></div></li>
-      </ol>
-      <div class="guardrail">Size mismatch = hard stop · ambiguity = ask, not guess</div>
-      <div class="source-group">
-        <a class="source" href="../implementation-spec.md" target="_blank">Architecture: implementation spec §5.1</a>
-        <span class="source caution">Prototype architecture · matcher benchmark pending</span>
-      </div>
-    </section>
-
-    <section class="slide cost" data-title="True landed cost" aria-hidden="true">
-      <header class="slide-head compact">
-        <span class="kicker">06 · THE TRUE COST</span>
+        <span class="kicker">03 · THE REAL PROBLEM</span>
         <h2>Sticker price is only line one.</h2>
       </header>
       <div class="cost-grid">
@@ -210,7 +138,7 @@
           </dl>
         </div>
         <div class="decision-card">
-          <span>JAN'S CAP</span>
+          <span>JAN'S LIMIT</span>
           <strong>€100.00</strong>
           <div class="reject-badge">REJECT · €11.38 OVER</div>
           <p>Cheap sticker.<br /><b>Wrong deal.</b></p>
@@ -222,10 +150,45 @@
       </div>
     </section>
 
+    <section class="slide reveal" data-title="Meet SolidHunt" aria-hidden="true">
+      <div class="reveal-inner">
+        <span class="kicker">04 · THE REVEAL</span>
+        <h2>Jan, meet</h2>
+        <img src="assets/brand/solidhunt-logo.svg" alt="SolidHunt" />
+        <div class="reveal-steps">
+          <span>Name the product.</span>
+          <span>Set your budget.</span>
+          <strong>We do the hunting.</strong>
+        </div>
+      </div>
+    </section>
+
+    <section class="slide demo intake-demo" data-title="Request becomes data" aria-hidden="true">
+      <header class="slide-head compact">
+        <span class="kicker">05 · FROM WORDS TO DATA</span>
+        <h2>He says it once.<br />We structure the hunt.</h2>
+      </header>
+      <div class="parse-stage">
+        <div class="spoken-request">
+          <span>JAN SAYS</span>
+          <p><span class="typing-text">“Cow-print adidas Samba, EU 43.5, max €100 delivered—no rush.”</span><i></i></p>
+        </div>
+        <div class="parse-beam"><span></span><b>UNDERSTAND</b></div>
+        <div class="request-output">
+          <article class="parse-chip chip-1"><span>PRODUCT</span><strong>adidas Samba OG</strong></article>
+          <article class="parse-chip chip-2"><span>STYLE</span><strong>KI6669 · cow print</strong></article>
+          <article class="parse-chip chip-3"><span>SIZE</span><strong>EU 43.5</strong></article>
+          <article class="parse-chip chip-4"><span>TOTAL LIMIT</span><strong>€100 delivered</strong></article>
+          <article class="parse-chip chip-5"><span>TIMING</span><strong>Wait for the right deal</strong></article>
+        </div>
+        <div class="approval-line"><i></i><span>Jan checks the details before the search begins.</span></div>
+      </div>
+    </section>
+
     <section class="slide routes" data-title="Routes and timing" aria-hidden="true">
       <header class="slide-head compact">
-        <span class="kicker">07 · EVERY VIABLE ROUTE</span>
-        <h2>Find the best deal now—or the right moment later.</h2>
+        <span class="kicker">06 · ROUTES + TIMING</span>
+        <h2>Find the best deal now.<br />Or the right moment later.</h2>
       </header>
       <div class="route-layout">
         <div class="route-list">
@@ -244,38 +207,33 @@
             <div><strong>Storefront + forwarder</strong><span>FX · duties · VAT · fees</span></div>
             <b>€111.38</b>
           </article>
-          <article class="route-row ask-route">
-            <div class="route-icon">US</div>
-            <div><strong>Regional price</strong><span>Permission required</span></div>
-            <b>ASK</b>
-          </article>
         </div>
         <div class="monitor-card">
           <div class="monitor-head">
             <span><i></i> MONITORING</span>
             <b>day 18 / 90</b>
           </div>
-          <svg viewBox="0 0 520 255" role="img" aria-label="A price line falls below Jan's 100 euro cap">
+          <svg viewBox="0 0 520 255" role="img" aria-label="A price line falls below Jan's 100 euro limit">
             <line class="gridline" x1="38" y1="60" x2="494" y2="60"></line>
             <line class="gridline" x1="38" y1="124" x2="494" y2="124"></line>
             <line class="gridline" x1="38" y1="188" x2="494" y2="188"></line>
             <line class="capline" x1="38" y1="150" x2="494" y2="150"></line>
-            <text x="404" y="140">JAN'S CAP €100</text>
+            <text x="404" y="140">JAN'S LIMIT €100</text>
             <polyline points="38,82 90,96 144,78 198,118 250,110 306,139 360,126 414,166 470,184"></polyline>
             <circle cx="470" cy="184" r="8"></circle>
           </svg>
           <div class="monitor-decision"><span>Deal found</span><strong>€96.40 delivered</strong><b>BUY</b></div>
         </div>
       </div>
-      <p class="status-note">Regional price discovery is governed by the user's permission—never silently bypassed.</p>
+      <p class="status-note">Every route is compared by the same number: the full delivered price.</p>
     </section>
 
-    <section class="slide trust" data-title="Explainability and alerts" aria-hidden="true">
+    <section class="slide trust" data-title="Explainable decisions" aria-hidden="true">
       <header class="slide-head compact">
-        <span class="kicker">08 · TRUST BY DESIGN</span>
-        <h2>Every decision leaves a receipt.<br />Every interruption must earn its place.</h2>
+        <span class="kicker">07 · EXPLAINABLE BY DESIGN</span>
+        <h2>Every decision leaves a receipt.</h2>
       </header>
-      <div class="trust-grid">
+      <div class="trust-grid receipt-only">
         <article class="audit-card">
           <div class="audit-top"><span class="buy-badge">BUY</span><span>decided by CODE · E1</span></div>
           <h3>€96.40 delivered</h3>
@@ -283,109 +241,77 @@
             <div><span>Route</span><b>DE → PL · direct</b></div>
             <div><span>Trust</span><b>0.91 · high</b></div>
             <div><span>ETA</span><b>2 days</b></div>
-            <div><span>Reason</span><b>within cap · best eligible route</b></div>
+            <div><span>Reason</span><b>within limit · best eligible route</b></div>
           </div>
           <div class="hash">receipt h_42_1 · tick 18 · append-only decision record</div>
         </article>
-        <article class="interrupt-card">
-          <div class="quiet-ring"><strong>2</strong><span>interruptions<br />per week</span></div>
-          <div class="interrupt-copy">
-            <p><i class="dot green"></i><span>Good deal matching the request</span><b>act</b></p>
-            <p><i class="dot amber"></i><span>Small, meaningful exception</span><b>ask</b></p>
-            <p><i class="dot gray"></i><span>Everything else</span><b>stay quiet</b></p>
-          </div>
-        </article>
+        <aside class="receipt-proof">
+          <span>THE RECEIPT SAVES</span>
+          <div><b>01</b><strong>Inputs</strong><small>price · FX · tax · shipping</small></div>
+          <div><b>02</b><strong>Rules</strong><small>budget · size · trust</small></div>
+          <div><b>03</b><strong>Reason</strong><small>why this route won</small></div>
+          <div><b>04</b><strong>Outcome</strong><small>buy · wait · reject</small></div>
+        </aside>
       </div>
-      <a class="source" href="../implementation-spec.md" target="_blank">Decision receipts and interruption budget: implementation spec §§5.9–6.3</a>
+      <a class="source" href="../implementation-spec.md" target="_blank">Decision receipts: implementation spec §§5.9–6.3</a>
     </section>
 
-    <section class="slide world" data-title="Seeded world simulator" aria-hidden="true">
+    <section class="slide stats stats-method" data-title="We like maths" aria-hidden="true">
       <header class="slide-head compact">
-        <span class="kicker">09 · THE SCIENCE</span>
-        <h2>We built the answer key before claiming the win.</h2>
+        <span class="kicker">08 · MEASURED, NOT MARKETED</span>
+        <h2>We like maths.<br /><span>So we built an answer key.</span></h2>
       </header>
-      <div class="world-grid">
-        <div class="seed-card">
-          <span>WORLD SEED</span>
-          <strong>42</strong>
-          <p>Replay any failure.<br />Change the seed, change the market.</p>
-          <code>sha256(seed : namespace)</code>
+      <div class="math-layout">
+        <div class="math-copy">
+          <div class="math-number"><strong>100</strong><span>paired market worlds</span></div>
+          <p>Same products. Same budgets. Same market shocks. Only the decision policy changes.</p>
+          <div class="math-tags"><span>seeded</span><span>replayable</span><span>paired</span></div>
         </div>
-        <div class="world-metrics">
-          <div><strong>40</strong><span>products</span></div>
-          <div><strong>25</strong><span>vendors</span></div>
-          <div><strong>266</strong><span>listings</span></div>
-          <div><strong>23,940</strong><span>price observations</span></div>
-          <div><strong>27</strong><span>planted traps</span></div>
-          <div><strong>90</strong><span>simulated days</span></div>
-        </div>
-      </div>
-      <div class="sim-pipeline" aria-label="Seeded simulator pipeline">
-        <span>catalog</span><i>→</i><span>vendors</span><i>→</i><span>prices + FX</span><i>→</i><span>traps</span><i>→</i><span>oracle</span><i>→</i><span>receipts</span>
-      </div>
-      <div class="source-group">
-        <a class="source" href="../docs/world-simulation.md" target="_blank">Simulator design and deterministic pipeline</a>
-        <a class="source" href="../reports/feat-world.md" target="_blank">Verified seed-42 world shape</a>
+        <figure class="chart-frame timeline-chart">
+          <img src="assets/stats/all-runs.svg" alt="One hundred paired simulated market timelines" />
+          <figcaption>100 markets × 90 days · every run can be replayed</figcaption>
+        </figure>
       </div>
     </section>
 
-    <section class="slide benchmark" data-title="Evaluation matrix" aria-hidden="true">
+    <section class="slide stats stats-gap" data-title="Closer to optimal" aria-hidden="true">
       <header class="slide-head compact">
-        <span class="kicker">10 · MEASURE, DON'T MARKET</span>
-        <h2>Same worlds. Four policies. No moving goalposts.</h2>
+        <span class="kicker">09 · PRICE QUALITY</span>
+        <h2>51% closer to the optimum.</h2>
       </header>
-      <div class="benchmark-grid">
-        <div class="bench-scale">
-          <strong>2,400</strong>
-          <span>planned primary runs</span>
-          <p>200 seeds × 3 requests × 4 policies</p>
-        </div>
-        <div class="policy-matrix">
-          <div class="policy-head"><span>POLICY</span><b>LEGITIMACY</b><b>STRIKE QUALITY</b><b>REGRET</b></div>
-          <div><span>Greedy sticker</span><i></i><i></i><i></i></div>
-          <div><span>Landed, no trust</span><i></i><i></i><i></i></div>
-          <div class="ours"><span>SolidHunt · immediate</span><i></i><i></i><i></i></div>
-          <div class="ours"><span>SolidHunt · monitor</span><i></i><i></i><i></i></div>
-        </div>
+      <div class="chart-focus">
+        <img src="assets/stats/price-gap-comparison.svg" alt="Box plot comparing each strategy's distance from the best possible price" />
+        <aside class="chart-callout green-callout"><span>MEDIAN GAP</span><strong>€1.96</strong><p>SolidHunt</p><small>Casual shopper: €4.02</small></aside>
       </div>
-      <div class="honesty-strip">
-        <b>Verified today</b>
-        <span>same seed → byte-identical world</span>
-        <span>receipt lines sum exactly</span>
-        <span>planted traps + independent oracle</span>
-      </div>
-      <p class="pending-note">Measured policy comparison is pending the completed matcher + monitor engine. Placeholder API numbers are intentionally excluded.</p>
-      <a class="source" href="../docs/world-simulation.md" target="_blank">Evaluation plan: simulator docs §13</a>
     </section>
 
-    <section class="slide market" data-title="Market opportunity" aria-hidden="true">
+    <section class="slide stats stats-paired" data-title="Paired savings" aria-hidden="true">
       <header class="slide-head compact">
-        <span class="kicker">11 · MARKET OPPORTUNITY</span>
-        <h2>The market is already hunting.</h2>
+        <span class="kicker">10 · PAIRED COMPARISON</span>
+        <h2>When both buy, SolidHunt<br />wins or ties <span>82.6%</span> of the time.</h2>
       </header>
-      <div class="market-grid">
-        <div class="tam-card">
-          <span>GLOBAL B2C E-COMMERCE · 2027 FORECAST</span>
-          <strong>$5.5T</strong>
-          <p>One enormous market.<br />Millions of fragmented decisions.</p>
-        </div>
-        <div class="market-stat"><strong>59%</strong><span>buy from retailers abroad</span></div>
-        <div class="market-stat"><strong>51%</strong><span>cross-border for lower prices</span></div>
-        <div class="market-stat ai"><strong>39%</strong><span>of surveyed U.S. consumers have used AI for shopping</span></div>
-        <div class="market-stat ai"><strong>85%</strong><span>of those users say it improved the experience</span></div>
+      <div class="paired-layout">
+        <img src="assets/stats/paired-outcomes.svg" alt="Paired comparison showing SolidHunt cheaper 29 times, tied 28 times, and shopper cheaper 12 times" />
+        <div class="saving-badge"><span>AVERAGE PAIRED SAVING</span><strong>€7.36</strong></div>
       </div>
-      <p class="market-close">People already ask AI what to buy. <b>SolidHunt proves which deal wins.</b></p>
-      <div class="source-group">
-        <a class="source" href="https://www.trade.gov/ecommerce-sales-size-forecast" target="_blank" rel="noreferrer">U.S. International Trade Administration</a>
-        <a class="source" href="https://www.dhl.com/global-en/microsites/ec/ecommerce-insights/insights/e-commerce-logistics/2025-cross-border-trends.html" target="_blank" rel="noreferrer">DHL Cross-Border Trends 2025</a>
-        <a class="source" href="https://business.adobe.com/blog/ai-traffic-surge-retail-sites-not-machine-readable" target="_blank" rel="noreferrer">Adobe Digital Insights 2026</a>
+    </section>
+
+    <section class="slide stats stats-honesty" data-title="The honest trade-off" aria-hidden="true">
+      <header class="slide-head compact">
+        <span class="kicker">11 · THE HONEST TRADE-OFF</span>
+        <h2>We optimize the deal.<br />Not the purchase count.</h2>
+      </header>
+      <div class="honesty-layout">
+        <figure class="chart-frame outcome-chart"><img src="assets/stats/outcomes.svg" alt="Purchase outcomes across one hundred runs" /></figure>
+        <figure class="chart-frame timing-chart"><img src="assets/stats/buy-timing.svg" alt="Paired chart comparing SolidHunt and casual shopper purchase timing" /></figure>
       </div>
+      <div class="honesty-note"><strong>79 vs 82</strong><span>legitimate purchases · zero invalid purchases for both · SolidHunt accepts three more misses to avoid weaker deals</span></div>
     </section>
 
     <section class="slide team" data-title="Team" aria-hidden="true">
       <header class="slide-head compact">
         <span class="kicker">12 · THE TEAM</span>
-        <h2>Four Bison Fellows. One product.</h2>
+        <h2>Four builders. One product.</h2>
       </header>
       <div class="team-grid">
         <article class="person">
@@ -405,14 +331,12 @@
           <div><h3>Krzysztof Romanowski</h3><p>Computer vision + autonomous systems · AI founder</p></div>
         </article>
       </div>
-      <a class="source" href="https://www.bisonfellowship.com/en/stypendysci/" target="_blank" rel="noreferrer">Official bios and portraits: Bison Fellowship 2026</a>
     </section>
 
     <section class="slide close" data-title="Close" aria-hidden="true">
       <div class="close-inner">
-        <img src="../assets/brand/solidhunt-logo.svg" alt="SolidHunt" />
+        <img src="assets/brand/solidhunt-logo.svg" alt="SolidHunt" />
         <h2>Tell us what you want.<br /><span>We'll find the moment.</span></h2>
-        <p>The deal hunter that never sleeps.</p>
       </div>
       <div class="close-mark" aria-hidden="true">
         <div class="focus-mark"><i></i><i></i><i></i><i></i><b></b></div>
