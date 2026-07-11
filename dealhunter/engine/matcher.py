@@ -273,6 +273,30 @@ def rank_catalog(query: str, world: World) -> list[CandidateScore]:
     return sorted(ranked, key=lambda item: (-item.score, item.product.style_code))
 
 
+def catalog_candidates(query: str, world: World, reject: int = 60) -> list[Product]:
+    """Resolve intake text: deterministic exact evidence, else fuzzy floor."""
+    code_product = _exact_code_product(query, world)
+    if code_product is not None:
+        return [code_product]
+    text = normalize_text(query)
+    brands = _detected_brands(text, world)
+    kids = any(_has_phrase(text, marker) for marker in _KIDS_MARKERS)
+    exact = [
+        product
+        for product in world.products
+        if normalize_text(product.brand) in brands
+        and _model_evidence(text, product, world, kids)
+        and _color_evidence(text, product, world)
+    ]
+    if kids:
+        kids_exact = [product for product in exact if product.is_kids_version_of]
+        if kids_exact:
+            exact = kids_exact
+    if exact:
+        return sorted(exact, key=lambda product: product.style_code)
+    return [item.product for item in rank_catalog(query, world) if item.score >= reject]
+
+
 def _exact_code_product(title: str, world: World) -> Product | None:
     compact_title = _compact(title)
     hits = [product for product in world.products if _compact(product.style_code) in compact_title]
