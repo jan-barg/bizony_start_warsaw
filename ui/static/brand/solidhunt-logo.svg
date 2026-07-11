@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" width="1280" height="360" viewBox="0 0 1280 360" role="img" aria-labelledby="title desc">
+  <title id="title">SolidHunt logo</title>
+  <desc id="desc">A bright green square containing a black focus mark, followed by the lowercase SolidHunt wordmark.</desc>
+
+  <!-- Transparent background -->
+  <g id="mark">
+    <rect x="48" y="60" width="240" height="240" fill="#43F27E"/>
+
+    <!-- Four focus corners: the agent locks onto the right deal. -->
+    <path d="M104 158V116H146" fill="none" stroke="#080808" stroke-width="28" stroke-linecap="square" stroke-linejoin="miter"/>
+    <path d="M190 116H232V158" fill="none" stroke="#080808" stroke-width="28" stroke-linecap="square" stroke-linejoin="miter"/>
+    <path d="M232 202V244H190" fill="none" stroke="#080808" stroke-width="28" stroke-linecap="square" stroke-linejoin="miter"/>
+    <path d="M146 244H104V202" fill="none" stroke="#080808" stroke-width="28" stroke-linecap="square" stroke-linejoin="miter"/>
+
+    <!-- Small decision point at the centre. -->
+    <rect x="159" y="171" width="18" height="18" fill="#080808" transform="rotate(45 168 180)"/>
+  </g>
+
+  <text x="340" y="231" fill="#080808"
+        font-family="Inter, Arial, Helvetica, sans-serif"
+        font-size="152" font-weight="500" letter-spacing="-8">
+    <tspan>solid</tspan><tspan font-weight="750">hunt</tspan>
+  </text>
+</svg>
