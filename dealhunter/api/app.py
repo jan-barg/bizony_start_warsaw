@@ -16,7 +16,7 @@ import json
 import re
 from decimal import Decimal
 from pathlib import Path
-from typing import Any
+from typing import Any, Literal
 
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
@@ -29,12 +29,16 @@ from ..core.ids import ask_id as make_ask_id
 from ..core.ids import hunt_id as make_hunt_id
 from ..core.models import (
     Ask, AutoBuy, Brief, Hunt, IntakeResult, Mandate, Receipt, World,
-    canonical_json, quote_hash,
+    quote_hash,
 )
 from ..engine.loop import run_immediate as engine_run_immediate
-from ..llm.client import NullClient
+from ..llm.cache import CacheMode, CachedClient, LLMCacheMiss
+from ..llm.client import IntakeUnavailable, LLMClient, LLMProtocolError, NullClient
+from ..llm.intake import IntakeState, clarify_intake, start_intake, start_structured_intake
+from ..llm.narrate import AskFactSheet, narrate_ask
 from ..world.dossier import render_dossier
 from ..world.generate import generate_world
+from .image_store import SessionImageStore
 
 # Generated worlds are deterministic and expensive-ish (~24k rows) — cache them
 # at module level so tests resetting FixtureEngine don't regenerate per test.
@@ -81,7 +85,7 @@ class FixtureEngine:
         "cap_landed_eur": "What's your maximum all-in (landed) price, in EUR?",
     }
 
-    def __init__(self) -> None:
+    def __init__(self, *, llm: LLMClient | None = None, real_intake: bool = False) -> None:
         self.world = World.model_validate_json((ROOT / "fixtures" / "mini_world.json").read_text())
         rows = (ROOT / "fixtures" / "receipts_demo.jsonl").read_text().splitlines()
         receipts = [Receipt.model_validate_json(r) for r in rows]
@@ -91,6 +95,10 @@ class FixtureEngine:
         )
         self.immediate_receipt = next(r for r in receipts if r.action == Action.ESCALATE_NONE_FOUND)
         self.intakes: dict[str, dict[str, Any]] = {}
+        self.real_intakes: dict[str, IntakeState] = {}
+        self.image_store = SessionImageStore()
+        self.llm = llm or NullClient()
+        self.real_intake = real_intake
         self.hunts: dict[str, Hunt] = {}
         self.hunt_world: dict[str, str] = {}   # hunt_id → world_id (Hunt model is frozen core)
         self.asks: dict[str, Ask] = {}
@@ -148,6 +156,7 @@ class FixtureEngine:
             return IntakeResult(status=IntakeStatus.NEEDS_INFO, missing=missing,
                                 questions=[self.QUESTIONS[k] for k in missing[:CFG.INTAKE_MAX_QUESTIONS]])
 
+        assert product is not None and size is not None and cap is not None
         mode = Mode.IMMEDIATE if re.search(r"\b(now|immediately|today|right away)\b", text) else Mode.MONITOR
         deadline = re.search(r"in (\d+) days", text)
         auto = bool(re.search(r"(just buy|don'?t ask|auto[- ]?buy)", text))
@@ -178,7 +187,71 @@ class FixtureEngine:
         return diff
 
 
-ENGINE = FixtureEngine()
+ENGINE = FixtureEngine(
+    llm=CachedClient(None, ROOT / CFG.LLM_CACHE_PATH, CFG.LLM_MODEL_PIN, CacheMode.REPLAY),
+    real_intake=True,
+)
+
+
+def _real_diff(state: IntakeState) -> list[dict[str, Any]]:
+    return [
+        {
+            "path": entry.path,
+            "before": entry.before,
+            "after": entry.after,
+            "sensitive": entry.sensitive,
+        }
+        for entry in state.diff
+    ]
+
+
+def _real_intake_payload(state: IntakeState) -> dict[str, Any]:
+    result = state.session.last_result
+    diff = _real_diff(state)
+    legacy_diff = [
+        {
+            "field": entry["path"],
+            "old": json.dumps(entry["before"], ensure_ascii=False),
+            "new": json.dumps(entry["after"], ensure_ascii=False),
+            "sensitive": entry["sensitive"],
+        }
+        for entry in diff
+    ]
+    payload: dict[str, Any] = {
+        "intake_id": state.session.id,
+        "status": result.status.value,
+        "missing": result.missing,
+        "questions": result.questions,
+        "diff": diff,
+        "mandate_diff": legacy_diff,
+    }
+    if result.status == IntakeStatus.OK:
+        assert state.hunt is not None
+        payload |= {
+            "hunt_id": state.hunt.id,
+            "brief": state.hunt.brief.model_dump(mode="json"),
+            "mandate": state.hunt.mandate.model_dump(mode="json"),
+        }
+    return payload
+
+
+def _store_real_intake(state: IntakeState) -> None:
+    ENGINE.real_intakes[state.session.id] = state
+    if state.hunt is None:
+        return
+    ENGINE.hunts[state.hunt.id] = state.hunt
+    ENGINE.hunt_world[state.hunt.id] = state.session.world_id
+    ENGINE.receipts_by_hunt[state.hunt.id] = []
+
+
+def _intake_http_error(error: Exception) -> HTTPException:
+    if isinstance(error, IntakeUnavailable):
+        return HTTPException(503, "LLM intake unavailable; use the structured form")
+    if isinstance(error, LLMCacheMiss):
+        return HTTPException(503, "request is absent from the reviewed replay cache")
+    if isinstance(error, ValueError):
+        return HTTPException(422, str(error))
+    return HTTPException(502, f"LLM intake failed validation: {error}")
 
 
 def _intake_payload(intake_id: str) -> dict[str, Any]:
@@ -188,6 +261,7 @@ def _intake_payload(intake_id: str) -> dict[str, Any]:
                            "missing": r.missing, "questions": r.questions,
                            "mandate_diff": s["diff"]}
     if r.status == IntakeStatus.OK:
+        assert r.brief is not None and r.mandate is not None
         out |= {"hunt_id": s["hunt_id"],
                 "brief": json.loads(r.brief.model_dump_json()),
                 "mandate": json.loads(r.mandate.model_dump_json())}
@@ -213,6 +287,17 @@ class IntakeBody(BaseModel):
 
 class ClarifyBody(BaseModel):
     text: str
+
+
+class StructuredIntakeBody(BaseModel):
+    world_id: str = DEFAULT_WORLD_ID
+    product_query: str
+    colorway: str | None = None
+    style_code: str | None = None
+    size_eu: str | None = None
+    cap_landed_eur: str | None = None
+    need_within_ticks: int | None = None
+    mode: Mode = Mode.MONITOR
 
 
 class MandatePatch(BaseModel):
@@ -266,9 +351,28 @@ def dossier(world_id: str) -> dict[str, str]:
 
 @app.post("/intake")
 def intake(body: IntakeBody) -> dict[str, Any]:
-    _resolve_world(body.world_id)      # validate early; generates + caches if needed
+    world = _resolve_world(body.world_id)      # validate early; generates + caches if needed
     ENGINE._n_intake += 1
     intake_id = f"i_{ENGINE._n_intake:03d}"
+    if ENGINE.real_intake:
+        try:
+            image_ref = None
+            if image_b64 := body.input.get("image_b64"):
+                image_ref = ENGINE.image_store.add_b64(image_b64)
+            state = start_intake(
+                intake_id,
+                body.world_id,
+                body.input.get("text", ""),
+                world,
+                ENGINE.llm,
+                CFG,
+                image_ref=image_ref,
+                image_resolver=ENGINE.image_store,
+            )
+        except (IntakeUnavailable, LLMCacheMiss, LLMProtocolError, ValueError) as error:
+            raise _intake_http_error(error) from error
+        _store_real_intake(state)
+        return _real_intake_payload(state)
     transcript = [body.input.get("text", "")]
     result = ENGINE.parse(transcript)
     session = {"transcript": transcript, "result": result, "diff": [], "hunt_id": None,
@@ -279,8 +383,44 @@ def intake(body: IntakeBody) -> dict[str, Any]:
     return _intake_payload(intake_id)
 
 
+@app.post("/intake/structured")
+def structured_intake(body: StructuredIntakeBody) -> dict[str, Any]:
+    world = _resolve_world(body.world_id)
+    ENGINE._n_intake += 1
+    intake_id = f"i_{ENGINE._n_intake:03d}"
+    try:
+        state = start_structured_intake(
+            intake_id,
+            body.world_id,
+            body.model_dump(mode="json", exclude={"world_id"}, exclude_none=True),
+            world,
+            CFG,
+        )
+    except (LLMProtocolError, ValueError) as error:
+        raise _intake_http_error(error) from error
+    _store_real_intake(state)
+    return _real_intake_payload(state)
+
+
 @app.post("/intake/{intake_id}/clarify")
 def clarify(intake_id: str, body: ClarifyBody) -> dict[str, Any]:
+    if intake_id in ENGINE.real_intakes:
+        current = ENGINE.real_intakes[intake_id]
+        if current.hunt is not None:
+            raise HTTPException(409, "intake already promoted to a hunt")
+        try:
+            state = clarify_intake(
+                current,
+                body.text,
+                _resolve_world(current.session.world_id),
+                ENGINE.llm,
+                CFG,
+                image_resolver=ENGINE.image_store,
+            )
+        except (IntakeUnavailable, LLMCacheMiss, LLMProtocolError, ValueError) as error:
+            raise _intake_http_error(error) from error
+        _store_real_intake(state)
+        return _real_intake_payload(state)
     s = ENGINE.intakes.get(intake_id)
     if s is None:
         raise HTTPException(404, "unknown intake session")
@@ -296,6 +436,7 @@ def clarify(intake_id: str, body: ClarifyBody) -> dict[str, Any]:
 
 
 def _create_hunt(result: IntakeResult, world_id: str) -> str:
+    assert result.brief is not None and result.mandate is not None
     ENGINE._n_hunt += 1
     hid = make_hunt_id(0, ENGINE._n_hunt)
     ENGINE.hunts[hid] = Hunt(id=hid, brief=result.brief, mandate=result.mandate,
@@ -396,26 +537,34 @@ def receipts(hunt_id: str, from_tick: int = 0) -> list[dict[str, Any]]:
 # SSE — the monitor timeline (envelope: {type, tick, payload}, §8)
 # ---------------------------------------------------------------------------
 
-ASK_NARRATIVE = {
-    AskKind.GRAY_ROUTE: (
-        "Tokyo storefront promo via forwarder ZenForward: landed {landed} vs {cmp} for the "
-        "best non-gray option, ETA {eta} ticks, estimated {cancel}% chance the merchant "
-        "cancels (foreign card + forwarding address). Approve this route?"),
-    AskKind.OVER_CAP: (
-        "Best price ever observed: {landed}, which is over your {cap} cap but within the "
-        "10% band. High-trust vendor, colorway confirmed. Approve a one-time cap "
-        "extension for exactly this quote?"),
-}
-
-
 def _make_ask(hunt: Hunt, receipt: Receipt, seq: int) -> Ask:
     kind = AskKind.GRAY_ROUTE if receipt.escalation_tier == "E2" else AskKind.OVER_CAP
+    if receipt.chosen is None:
+        raise ValueError("ASK receipt must carry a chosen evaluation")
     q = receipt.chosen.quote
-    narrative = ASK_NARRATIVE[kind].format(
-        landed=f"€{q.landed_eur}", cmp="€84.00", eta=q.eta_ticks,
-        cancel=int(Decimal("100") * q.p_cancel_est), cap=f"€{hunt.mandate.cap_landed_eur}")
+    world = _resolve_world(ENGINE.hunt_world.get(hunt.id, "w_fixture"))
+    listing = next((item for item in world.listings if item.id == q.listing_id), None)
+    if listing is None:
+        vendor_name = "Fixture vendor"
+        listing_title = q.listing_id
+    else:
+        vendor = next(item for item in world.vendors if item.id == listing.vendor_id)
+        vendor_name = vendor.name
+        listing_title = listing.raw_title
+    comparison = Decimal("84.00")
+    narrative = narrate_ask(
+        AskFactSheet(
+            kind=kind,
+            quote=q,
+            vendor_name=vendor_name,
+            listing_title=listing_title,
+            comparison_landed_eur=comparison,
+            cap_landed_eur=hunt.mandate.cap_landed_eur,
+        ),
+        ENGINE.llm,
+    )
     return Ask(id=make_ask_id(hunt.id, receipt.tick, seq), hunt_id=hunt.id, tick=receipt.tick,
-               kind=kind, quote=q, comparison_landed_eur=Decimal("84.00"),
+               kind=kind, quote=q, comparison_landed_eur=comparison,
                quote_hash=quote_hash(q), narrative=narrative, status="PENDING")
 
 
@@ -523,7 +672,9 @@ async def events(hunt_id: str, tick_ms: int | None = None) -> EventSourceRespons
 # Asks
 # ---------------------------------------------------------------------------
 
-def _resolve_ask(ask_id: str, resolution: str) -> dict[str, str]:
+def _resolve_ask(
+    ask_id: str, resolution: Literal["APPROVED", "DECLINED"]
+) -> dict[str, str]:
     ask = ENGINE.asks.get(ask_id)
     if ask is None:
         raise HTTPException(404, "unknown ask")

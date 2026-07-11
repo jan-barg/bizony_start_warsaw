@@ -31,6 +31,7 @@ async function req(method, path, body) {
 // ---- intake (§7.1 loop) ----
 export const postIntake = (text, mode) => req('POST', '/intake', { input: { text }, mode });
 export const postClarify = (intakeId, text) => req('POST', `/intake/${intakeId}/clarify`, { text });
+export const postStructuredIntake = (fields) => req('POST', '/intake/structured', fields);
 
 // ---- hunts ----
 export const getHunt = (huntId) => req('GET', `/hunts/${huntId}`);
