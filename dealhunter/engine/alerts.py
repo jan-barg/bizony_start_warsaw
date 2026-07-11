@@ -85,8 +85,11 @@ def create_ask(
     comparison_landed_eur: Decimal | None,
     sequence: int = 0,
 ) -> Ask:
-    if hunt.pending_ask is not None and hunt.pending_ask.status == "PENDING":
-        raise ValueError("a pending ask already exists")
+    if hunt.pending_ask is not None and hunt.pending_ask.status in {
+        "PENDING",
+        "APPROVED",
+    }:
+        raise ValueError("an unresolved ask already exists")
     ask = Ask(
         id=ask_id(hunt.id, tick, sequence),
         hunt_id=hunt.id,

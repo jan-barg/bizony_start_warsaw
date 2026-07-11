@@ -67,3 +67,20 @@ stopping is the next planned slice.
 - The generated-world result is an E1 BUY at €133.63 with exact line items.
 - Two sequential demo runs produced identical SHA-256:
   `a81174631adb82ad39513d098f8d0c9602f6dcbcbf58b97261c54fae75d5f18c`.
+
+## S2 engine continuation
+
+- Added the documented Beta-Binomial finite-horizon stopping rule, explicit
+  least-squares trend heuristic, warm-up, deadline horizon, and forcing day.
+- Completed E0–E5 policy, unified interruption budget, gray-route and over-cap
+  asks, decline/re-ask behavior, and quote-exact HUMAN approval consumption.
+- Added monitor pause/resume, append-only orders, deterministic cancellation
+  outcomes behind the world boundary, same-tick immediate retry, refunds,
+  settlement epilogue, canonical JSONL writing, and invariants 1–8 coverage.
+- Added `scripts/demo_monitor.py` for deterministic seed-42 monitor replay.
+  The replay emits 84 HOLD, 4 ALERT, and 1 BUY receipt (tick 88); two runs have
+  identical SHA-256
+  `a8428d5c93b7b9196606d849ab6ddfa82e1dc5127de07c823a76361b65710989`.
+
+Still external to B: Person D's matcher integration and Person A's evaluation
+harness. The pinned-style fallback stays in place until D's branch is merged.

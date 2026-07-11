@@ -6,6 +6,7 @@ from dealhunter.core.enums import (
     AccessTier,
     Action,
     Channel,
+    DecidedBy,
     Geo,
     GeoArb,
     HuntStatus,
@@ -23,6 +24,7 @@ from dealhunter.core.models import (
     canonical_json,
 )
 from dealhunter.engine.policy import evaluate_tick
+from dealhunter.engine.alerts import approve_pending_ask
 from dealhunter.llm.client import NullClient
 
 
@@ -196,12 +198,19 @@ def test_best_gray_route_under_ask_emits_e2(monkeypatch):
         return MatchResult()
 
     monkeypatch.setattr("dealhunter.engine.policy.match", only_jp_listing)
-    receipt = evaluate_tick(hunt(cap="160", geo=GeoArb.ASK), 0, w, CFG, NullClient())
+    current = hunt(cap="160", geo=GeoArb.ASK)
+    receipt = evaluate_tick(current, 0, w, CFG, NullClient())
     assert receipt.action == Action.ASK
     assert receipt.escalation_tier == "E2"
     assert receipt.chosen is not None
     assert receipt.chosen.quote.access_tier == AccessTier.IP_GATED
     assert receipt.reasons[0] == "gray_route_consent_required"
+    assert current.pending_ask is not None
+    approve_pending_ask(current, current.pending_ask.quote_hash)
+    purchase = evaluate_tick(current, 0, w, CFG, NullClient())
+    assert purchase.action == Action.BUY
+    assert purchase.decided_by == DecidedBy.HUMAN
+    assert current.pending_ask.status == "CONSUMED"
 
 
 def test_blocked_gray_route_reselects_legal_offer(monkeypatch):

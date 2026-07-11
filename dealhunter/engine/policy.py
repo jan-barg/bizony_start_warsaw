@@ -28,14 +28,19 @@ from ..core.enums import (
     Mode,
 )
 from ..core.ids import receipt_id
-from ..core.models import Evaluation, Hunt, MatchResult, Receipt, World
+from ..core.models import Evaluation, Hunt, MatchResult, Receipt, World, quote_hash
 from ..llm.client import LLMClient
 from .landed import assemble
 from .matcher import match
 from .routes import enumerate_routes
 from .trust import expected_value, trust_score
 from .invariants import assert_s1_invariants
-from .alerts import can_interrupt, create_ask, record_interruption
+from .alerts import (
+    can_interrupt,
+    consume_approved_ask,
+    create_ask,
+    record_interruption,
+)
 from .stopping import deal_percentile, final_buy_tick, p_better, stopping_decision
 
 
@@ -274,6 +279,29 @@ def evaluate_tick(hunt: Hunt, tick: int, world: World, cfg: Constants, llm: LLMC
                 cfg,
             )
 
+    approved_ask = (
+        hunt.pending_ask
+        if hunt.pending_ask is not None
+        and hunt.pending_ask.status == "APPROVED"
+        and hunt.pending_ask.tick == tick
+        else None
+    )
+    approved_evaluation = None
+    if approved_ask is not None:
+        approved_evaluation = next(
+            (
+                item
+                for item in evaluations
+                if quote_hash(item.quote) == approved_ask.quote_hash
+                and item.purchase_eligible
+                and item.eligibility
+                in {Eligibility.QUALIFYING, Eligibility.OVER_CAP_BAND}
+            ),
+            None,
+        )
+        if approved_evaluation is None:
+            raise ValueError("approved quote is no longer executable")
+
     auto_selection = [
         evaluation
         for evaluation in selection
@@ -283,7 +311,15 @@ def evaluate_tick(hunt: Hunt, tick: int, world: World, cfg: Constants, llm: LLMC
             and hunt.mandate.geo_arbitrage == GeoArb.ASK
         )
     ]
-    if auto_selection:
+    decided_by = DecidedBy.CODE
+    if approved_evaluation is not None and approved_ask is not None:
+        consume_approved_ask(hunt, approved_evaluation.quote, approved_ask.kind)
+        chosen = approved_evaluation
+        action = Action.BUY
+        tier = "E2" if approved_ask.kind == AskKind.GRAY_ROUTE else "E3"
+        decided_by = DecidedBy.HUMAN
+        reasons = [f"approved_ask_consumed:{approved_ask.id}"]
+    elif auto_selection:
         chosen = sorted(auto_selection, key=_evaluation_sort_key)[0]
         action = Action.BUY
         tier = "E0"
@@ -300,12 +336,18 @@ def evaluate_tick(hunt: Hunt, tick: int, world: World, cfg: Constants, llm: LLMC
                 for item in selection
                 if item.quote.access_tier != AccessTier.IP_GATED
             ]
+            sequence = (
+                1
+                if hunt.pending_ask is not None and hunt.pending_ask.tick == tick
+                else 0
+            )
             create_ask(
                 hunt,
                 tick,
                 AskKind.GRAY_ROUTE,
                 chosen,
                 min(legal) if legal else None,
+                sequence,
             )
             action = Action.ASK
             tier = "E2"
@@ -376,7 +418,19 @@ def evaluate_tick(hunt: Hunt, tick: int, world: World, cfg: Constants, llm: LLMC
                 over_cap.quote.landed_eur,
             )
             if allowed:
-                create_ask(hunt, tick, AskKind.OVER_CAP, over_cap, None)
+                sequence = (
+                    1
+                    if hunt.pending_ask is not None and hunt.pending_ask.tick == tick
+                    else 0
+                )
+                create_ask(
+                    hunt,
+                    tick,
+                    AskKind.OVER_CAP,
+                    over_cap,
+                    None,
+                    sequence,
+                )
                 chosen = over_cap
                 action = Action.ASK
                 tier = "E3"
@@ -436,9 +490,9 @@ def evaluate_tick(hunt: Hunt, tick: int, world: World, cfg: Constants, llm: LLMC
                         f"deal_percentile:{deal_percentile(previous_best, current_history_best)}"
                     )
 
-    if current_history_best is not None:
+    if approved_ask is None and current_history_best is not None:
         hunt.history_best.append(current_history_best)
-    if current_history_any is not None:
+    if approved_ask is None and current_history_any is not None:
         hunt.history_best_any.append(current_history_any)
 
     considered = sorted(
@@ -450,7 +504,7 @@ def evaluate_tick(hunt: Hunt, tick: int, world: World, cfg: Constants, llm: LLMC
         hunt_id=hunt.id,
         tick=tick,
         action=action,
-        decided_by=DecidedBy.CODE,
+        decided_by=decided_by,
         escalation_tier=tier,
         chosen=chosen,
         considered=considered,
