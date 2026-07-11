@@ -55,7 +55,7 @@ Focused:
 
 Final offline gate:
 
-- `.venv/bin/python -m pytest -o "addopts=-m 'not integration'" -q` → 132 passed, 6 deselected, 12 pre-existing xfailed.
+- `.venv/bin/python -m pytest -o "addopts=-m 'not integration'" -q` → 133 passed, 6 deselected, 12 pre-existing xfailed.
 - `.venv/bin/ruff check .` → all checks passed.
 - `.venv/bin/mypy dealhunter` → success across 28 source files.
 - Hidden-label grep over `dealhunter/engine` → clean.
@@ -66,7 +66,9 @@ Live OpenAI / cache gate (fresh human approval on 2026-07-11):
 
 - First reviewed-manifest attempt failed closed before publication with OpenAI 400: mapping `input` must be translated to a string/array. Adapter regression added and fixed in `d7d665a`.
 - Retry: `gpt-5.6-terra`, seven reviewed cases/eight live calls → all semantic checks passed.
-- `fixtures/llm_cache.sqlite` → 8 normalized rows; SHA-256 `54463fbf780f7818e7042004eb3f6b75a78924cffa0ebf18457988eb50d55376`.
+- Corrective review gate: real rendered adversarial screenshot includes hostile cap/auto-buy instructions; server diff marks `mandate.cap_landed_eur` and `mandate.auto_buy.enabled` sensitive.
+- Warming now rejects any narration response that fails post-validation instead of accepting its fallback.
+- `fixtures/llm_cache.sqlite` → 8 normalized rows; SHA-256 `cd848b85b00884d2f3b6c82b5cd4b8f1d66bc5cbc5fa95f9c59d277534404698`.
 - Replay with sockets blocked → two normalized output runs byte-identical.
 - Independently rebuilt cache from replay → SQLite files byte-identical. `created` is deterministic `1970-01-01T00:00:00+00:00`; no wall-clock reads.
 

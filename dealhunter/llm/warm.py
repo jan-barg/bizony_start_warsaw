@@ -16,7 +16,7 @@ from .adjudicate import adjudicate
 from .cache import CacheMode, CachedClient
 from .client import LLMClient, OpenAIClient
 from .intake import clarify_intake, start_intake
-from .narrate import AskFactSheet, narrate_ask
+from .narrate import AskFactSheet, is_valid_narration_template, narrate_ask
 
 
 APPROVAL_PHRASE = "I approve live OpenAI cache warming"
@@ -36,6 +36,16 @@ class _Resolver:
         return self._images[reference]
 
 
+class _CaptureClient:
+    def __init__(self, upstream: LLMClient) -> None:
+        self._upstream = upstream
+        self.response: dict | None = None
+
+    def complete(self, request: dict) -> dict:
+        self.response = self._upstream.complete(request)
+        return self.response
+
+
 def _world(root: Path) -> World:
     return World.model_validate_json((root / "fixtures" / "mini_world.json").read_text())
 
@@ -52,14 +62,18 @@ def _intake_output(state: Any) -> dict[str, Any]:
 
 
 def _run_intake(
-    case: dict[str, Any], world: World, llm: LLMClient, cfg: Constants
+    case: dict[str, Any], world: World, llm: LLMClient, cfg: Constants, root: Path
 ) -> dict[str, Any]:
     image_ref = None
     images: dict[str, bytes] = {}
-    if "image_b64" in case:
+    if "image_b64" in case or "image_path" in case:
         import hashlib
 
-        image = base64.b64decode(case["image_b64"], validate=True)
+        image = (
+            base64.b64decode(case["image_b64"], validate=True)
+            if "image_b64" in case
+            else (root / case["image_path"]).read_bytes()
+        )
         image_ref = f"image:sha256:{hashlib.sha256(image).hexdigest()}"
         images[image_ref] = image
     resolver = _Resolver(images)
@@ -152,12 +166,21 @@ def run_manifest(manifest: dict[str, Any], root: Path, llm: LLMClient) -> list[d
     for case in manifest["cases"]:
         action = case["action"]
         if action in {"intake", "intake_clarify"}:
-            output = _run_intake(case, world, llm, cfg)
+            output = _run_intake(case, world, llm, cfg, root)
         elif action == "adjudicate":
             output = _run_adjudication(case, world, llm)
         elif action == "narrate":
             facts = _narration_facts(AskKind(case["kind"]))
-            output = {"narrative": narrate_ask(facts, llm)}
+            capture = _CaptureClient(llm)
+            output = {"narrative": narrate_ask(facts, capture)}
+            response = capture.response
+            if (
+                response is None
+                or set(response) != {"template"}
+                or not isinstance(response.get("template"), str)
+                or not is_valid_narration_template(response["template"])
+            ):
+                raise ManifestValidationError(f"{case['name']} narration failed post-validation")
         else:
             raise ManifestValidationError(f"unknown action: {action}")
         _validate(case, output)

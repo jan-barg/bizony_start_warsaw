@@ -108,6 +108,20 @@ def test_semantic_failure_does_not_publish_cache(tmp_path: Path) -> None:
     assert not output.exists()
 
 
+def test_rejected_narration_does_not_publish_cache(tmp_path: Path) -> None:
+    output = tmp_path / "llm_cache.sqlite"
+    responses = valid_responses()
+    responses[6] = {"template": "this costs 999 euro"}
+    with pytest.raises(ManifestValidationError, match="narration failed post-validation"):
+        warm_manifest(
+            MANIFEST,
+            output,
+            APPROVAL_PHRASE,
+            upstream=SequenceClient(responses),
+        )
+    assert not output.exists()
+
+
 def test_existing_cache_is_never_overwritten(tmp_path: Path) -> None:
     output = tmp_path / "llm_cache.sqlite"
     output.write_bytes(b"reviewed")

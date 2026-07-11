@@ -16,7 +16,7 @@ from ..core.models import (
     Mandate,
     World,
 )
-from ..engine.matcher import catalog_candidates, normalize_style_code
+from ..engine.matcher import catalog_candidates, normalize_style_code, normalize_text
 from .client import IntakeUnavailable, LLMClient, LLMProtocolError
 from .vision import ImageResolutionError, ImageResolver, image_data_url
 
@@ -268,6 +268,17 @@ def _question(key: str, proposed: str | None, candidates: list[Any]) -> str:
     if placeholders - allowed or ("{" in proposed and not placeholders):
         return fallback
     if candidates and key == "product_query" and "candidates" not in placeholders:
+        return fallback
+    prose = re.sub(r"{candidates}", " ", proposed)
+    if re.search(r"\d", prose):
+        return fallback
+    normalized_prose = normalize_text(prose)
+    candidate_phrases = {
+        normalize_text(value)
+        for candidate in candidates
+        for value in (candidate.brand, candidate.model, candidate.colorway_name, candidate.style_code)
+    }
+    if any(phrase and f" {phrase} " in f" {normalized_prose} " for phrase in candidate_phrases):
         return fallback
     labels = "; ".join(_candidate_label(item) for item in candidates[:5])
     try:

@@ -130,10 +130,16 @@ def test_more_than_eight_candidates_is_ambiguous(world: World) -> None:
         "world_0",
         "Nike",
         broad_world,
-        SequenceClient(provider_response(product_query="Nike")),
+        SequenceClient(
+            provider_response(
+                product_query="Nike",
+                questions={"product_query": "Is DD1391-100 one of {candidates}?"},
+            )
+        ),
     )
     assert state.session.last_result.missing[0] == "product_query"
     assert "Runner" in state.session.last_result.questions[0]
+    assert "DD1391-100" not in state.session.last_result.questions[0]
 
 
 @pytest.mark.parametrize(

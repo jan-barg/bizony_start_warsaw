@@ -27,34 +27,6 @@ _PLACEHOLDERS = frozenset(
     }
 )
 _IMPERATIVE = re.compile(r"\b(?:approve|buy|click|confirm|ignore|proceed)\b", re.IGNORECASE)
-_SAFE_WORDS = frozenset(
-    {
-        "a",
-        "alternative",
-        "an",
-        "and",
-        "at",
-        "available",
-        "cap",
-        "comparison",
-        "delivery",
-        "estimated",
-        "facts",
-        "for",
-        "from",
-        "has",
-        "is",
-        "option",
-        "over",
-        "route",
-        "the",
-        "this",
-        "to",
-        "uses",
-        "with",
-        "without",
-    }
-)
 _NARRATION_SCHEMA: dict[str, Any] = {
     "type": "object",
     "properties": {"template": {"type": "string"}},
@@ -139,8 +111,13 @@ def _valid_template(template: str) -> tuple[bool, set[str]]:
     stripped = re.sub(r"{[^{}]+}", " ", template)
     if "{" in stripped or "}" in stripped:
         return False, set()
-    words = set(re.findall(r"[A-Za-z]+", stripped.casefold()))
-    return words <= _SAFE_WORDS, placeholders
+    words = list(re.finditer(r"[A-Za-z]+", stripped))
+    foreign_proper_name = any(match.start() > 0 and match.group()[0].isupper() for match in words)
+    return not foreign_proper_name, placeholders
+
+
+def is_valid_narration_template(template: str) -> bool:
+    return _valid_template(template)[0]
 
 
 def narrate_ask(facts: AskFactSheet, llm: LLMClient) -> str:
