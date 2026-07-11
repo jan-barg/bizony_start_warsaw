@@ -38,3 +38,10 @@ The favorable price and safety result does not depend on weakening the comparato
 Against the arguably more typical weekly-checking hypothesis, SolidHunt also wins purchase coverage.
 
 The production `engine.run_monitor()` entry point remains incomplete. These are held-out results for `SOLIDHUNT_IMPROVED_MONITOR`, which uses production route, landed-cost, customs, trust, and EV components with the new evaluation timing policy.
+
+## Recommended pitch visuals
+
+- `plots/price-gap-comparison.svg`: focuses on €0–€30, where at least 90% of each policy's legitimate purchases fall; it separately reports every larger value and maximum.
+- `plots/price-gap-cdf.svg`: shows the share of legitimate purchases that stay within each distance from the optimum, avoiding a maximum-driven axis.
+- `plots/paired-outcomes.svg`: shows 29 SolidHunt wins, 28 ties, and 12 shopper wins across the 69 paired legitimate purchases.
+- `plots/shopper-sensitivity.svg`: shows that the price-quality and budget-safety result persists under both attentive and weekly shopper assumptions.

@@ -69,11 +69,13 @@ def test_artifacts_are_parseable_and_have_expected_rows(tmp_path: Path, small_ru
         output / "plots/all-runs.svg",
         output / "plots/buy-timing.svg",
         output / "plots/price-gap-comparison.svg",
+        output / "plots/price-gap-cdf.svg",
+        output / "plots/paired-outcomes.svg",
         output / "plots/outcomes.svg",
         output / "plots/shopper-sensitivity.svg",
         *sorted((output / "plots/timelines").glob("*.svg")),
     ]
-    assert len(svgs) == 9
+    assert len(svgs) == 11
     for svg in svgs:
         assert ET.parse(svg).getroot().tag.endswith("svg")
 

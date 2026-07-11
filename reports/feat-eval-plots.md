@@ -7,9 +7,10 @@
 - Added a projected target-world adapter so engine math can run across 90 ticks without repeatedly scanning unrelated listings; equivalence to the full immediate-engine receipt is tested.
 - Added the full legitimate landed-price timeline and common full-horizon optimum for each run.
 - Added exact price-gap decomposition: total = selection + timing.
-- Added CSV, JSON, Markdown, and dependency-free branded SVG output.
+- Added CSV, JSON, Markdown, and dependency-free SVG output using the presentation's SolidHunt green/black/white brand system and focus-mark lockup.
 - Preserved the original strict-policy diagnostic on seeds 1–100, then used those seeds to select a safety-preserving improved policy.
-- Generated untouched held-out seeds 101–200: 100 run rows, 9,000 timeline rows, one contact sheet, five aggregate plots, and 100 detailed timeline plots.
+- Generated untouched held-out seeds 101–200: 100 run rows, 9,000 timeline rows, one contact sheet, seven aggregate plots, and 100 detailed timeline plots.
+- Added an outlier-resistant focused price-gap distribution, cumulative price-gap curve, and paired win/tie/loss view; all tail values remain explicitly reported.
 - Added a weekly-shopper sensitivity run without weakening or replacing the primary attentive 3-day comparator.
 - Added methodology documentation and deterministic artifact tests.
 

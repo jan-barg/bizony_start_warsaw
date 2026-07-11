@@ -2,48 +2,55 @@
 <title id="title">Held-out shopper sensitivity comparison</title>
 <desc id="desc">Small multiples compare legitimate purchase rate, mean price gap, and cap violations for SolidHunt, an attentive three-day shopper, and a weekly shopper.</desc>
 <rect width="1280" height="610" fill="#FFFFFF"/>
-<style>text{font-family:Inter,Arial,sans-serif;fill:#080808} .small{font-size:11px} .label{font-size:13px;font-weight:600} .title{font-size:22px;font-weight:700}</style>
+<rect width="1280" height="8" fill="#43F27E"/>
+<style>text{font-family:Inter,Arial,Helvetica,sans-serif;fill:#080808} .small{font-size:11px} .label{font-size:13px;font-weight:650} .title{font-size:24px;font-weight:750;letter-spacing:-.7px} .subtitle{font-size:12px;fill:#59615B} .metric{font-size:18px;font-weight:750;letter-spacing:-.3px}</style>
+<g aria-label="SolidHunt" transform="translate(1114 19)">
+<rect width="28" height="28" fill="#43F27E"/>
+<path d="M6 12V6H12 M16 6H22V12 M22 16V22H16 M12 22H6V16" fill="none" stroke="#080808" stroke-width="3"/>
+<rect x="13" y="13" width="3" height="3" fill="#080808" transform="rotate(45 14.5 14.5)"/>
+<text x="38" y="21" font-size="17" letter-spacing="-.7"><tspan font-weight="500">solid</tspan><tspan font-weight="750">hunt</tspan></text>
+</g>
 <text x="40" y="38" class="title">Held-out trade-off across attentive and weekly shoppers</text>
 <text x="40" y="80" class="label">Legitimate purchase rate</text>
 <text x="40" y="117" class="small">SolidHunt improved</text>
 <rect x="40" y="130" width="390" height="34" fill="#F4F6F3"/>
-<rect x="40" y="130" width="335.5" height="34" fill="#137A3D"/>
+<rect x="40" y="130" width="335.5" height="34" fill="#43F27E"/>
 <text x="383.5" y="153" class="label">79%</text>
 <text x="40" y="232" class="small">Shopper · every 3 days</text>
 <rect x="40" y="245" width="390" height="34" fill="#F4F6F3"/>
-<rect x="40" y="245" width="348.2" height="34" fill="#A76100"/>
+<rect x="40" y="245" width="348.2" height="34" fill="#080808"/>
 <text x="396.2" y="268" class="label">82%</text>
 <text x="40" y="347" class="small">Shopper · weekly</text>
 <rect x="40" y="360" width="390" height="34" fill="#F4F6F3"/>
-<rect x="40" y="360" width="297.3" height="34" fill="#D49A4A"/>
+<rect x="40" y="360" width="297.3" height="34" fill="#A76100"/>
 <text x="345.3" y="383" class="label">70%</text>
 <text x="40" y="465" class="small">higher is better</text>
 <text x="450" y="80" class="label">Mean gap from optimum</text>
 <text x="450" y="117" class="small">SolidHunt improved</text>
 <rect x="450" y="130" width="390" height="34" fill="#F4F6F3"/>
-<rect x="450" y="130" width="164.4" height="34" fill="#137A3D"/>
+<rect x="450" y="130" width="164.4" height="34" fill="#43F27E"/>
 <text x="622.4" y="153" class="label">€7.66</text>
 <text x="450" y="232" class="small">Shopper · every 3 days</text>
 <rect x="450" y="245" width="390" height="34" fill="#F4F6F3"/>
-<rect x="450" y="245" width="296.4" height="34" fill="#A76100"/>
+<rect x="450" y="245" width="296.4" height="34" fill="#080808"/>
 <text x="754.4" y="268" class="label">€13.80</text>
 <text x="450" y="347" class="small">Shopper · weekly</text>
 <rect x="450" y="360" width="390" height="34" fill="#F4F6F3"/>
-<rect x="450" y="360" width="348.2" height="34" fill="#D49A4A"/>
+<rect x="450" y="360" width="348.2" height="34" fill="#A76100"/>
 <text x="806.2" y="383" class="label">€16.22</text>
 <text x="450" y="465" class="small">lower is better</text>
 <text x="860" y="80" class="label">Actual cap violations</text>
 <text x="860" y="117" class="small">SolidHunt improved</text>
 <rect x="860" y="130" width="390" height="34" fill="#F4F6F3"/>
-<rect x="860" y="130" width="0.0" height="34" fill="#137A3D"/>
+<rect x="860" y="130" width="0.0" height="34" fill="#43F27E"/>
 <text x="868.0" y="153" class="label">0</text>
 <text x="860" y="232" class="small">Shopper · every 3 days</text>
 <rect x="860" y="245" width="390" height="34" fill="#F4F6F3"/>
-<rect x="860" y="245" width="290.2" height="34" fill="#A76100"/>
+<rect x="860" y="245" width="290.2" height="34" fill="#080808"/>
 <text x="1158.2" y="268" class="label">5</text>
 <text x="860" y="347" class="small">Shopper · weekly</text>
 <rect x="860" y="360" width="390" height="34" fill="#F4F6F3"/>
-<rect x="860" y="360" width="348.2" height="34" fill="#D49A4A"/>
+<rect x="860" y="360" width="348.2" height="34" fill="#A76100"/>
 <text x="1216.2" y="383" class="label">6</text>
 <text x="860" y="465" class="small">lower is better</text>
 </svg>

@@ -49,7 +49,9 @@ The production `engine.run_monitor()` entry point is still a stub at this reposi
 - `plots/all-runs.svg`: 10×10 contact sheet showing every complete timeline.
 - `plots/timelines/run-001.svg` … `run-100.svg`: readable full timeline for every run.
 - `plots/buy-timing.svg`: paired user-versus-SolidHunt purchase day.
-- `plots/price-gap-comparison.svg`: every legitimate price gap with mean and median.
+- `plots/price-gap-comparison.svg`: focused distribution with quartiles and explicit tail counts.
+- `plots/price-gap-cdf.svg`: cumulative share of purchases within each price gap.
+- `plots/paired-outcomes.svg`: paired cheaper, tied, and more-expensive outcome counts.
 - `plots/outcomes.svg`: legitimate purchases, invalid purchases, and misses.
 - `plots/shopper-sensitivity.svg`: held-out comparison against 3-day and weekly shopper assumptions (when generated).
 

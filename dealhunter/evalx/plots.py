@@ -14,8 +14,11 @@ SOFT = "#F4F6F3"
 INK = "#080808"
 MUTED = "#59615B"
 BORDER = "#D8DDD9"
-ENGINE = "#137A3D"
-USER = "#A76100"
+BRAND = "#43F27E"
+ENGINE = BRAND
+ENGINE_LINE = "#0B6B32"
+USER = INK
+HOLD = "#A76100"
 OPTIMAL = "#2859C5"
 CAP = "#C52A22"
 
@@ -45,12 +48,20 @@ def _write(path: Path, content: str) -> None:
 
 
 def _svg_start(width: int, height: int, title: str, description: str) -> list[str]:
+    lockup_x = width - 166
     return [
         f'<svg xmlns="http://www.w3.org/2000/svg" width="{width}" height="{height}" viewBox="0 0 {width} {height}" role="img" aria-labelledby="title desc">',
         f"<title id=\"title\">{escape(title)}</title>",
         f"<desc id=\"desc\">{escape(description)}</desc>",
         f'<rect width="{width}" height="{height}" fill="{PAPER}"/>',
-        '<style>text{font-family:Inter,Arial,sans-serif;fill:#080808} .small{font-size:11px} .label{font-size:13px;font-weight:600} .title{font-size:22px;font-weight:700}</style>',
+        f'<rect width="{width}" height="8" fill="{BRAND}"/>',
+        '<style>text{font-family:Inter,Arial,Helvetica,sans-serif;fill:#080808} .small{font-size:11px} .label{font-size:13px;font-weight:650} .title{font-size:24px;font-weight:750;letter-spacing:-.7px} .subtitle{font-size:12px;fill:#59615B} .metric{font-size:18px;font-weight:750;letter-spacing:-.3px}</style>',
+        f'<g aria-label="SolidHunt" transform="translate({lockup_x} 19)">',
+        f'<rect width="28" height="28" fill="{BRAND}"/>',
+        f'<path d="M6 12V6H12 M16 6H22V12 M22 16V22H16 M12 22H6V16" fill="none" stroke="{INK}" stroke-width="3"/>',
+        f'<rect x="13" y="13" width="3" height="3" fill="{INK}" transform="rotate(45 14.5 14.5)"/>',
+        f'<text x="38" y="21" font-size="17" letter-spacing="-.7"><tspan font-weight="500">solid</tspan><tspan font-weight="750">hunt</tspan></text>',
+        '</g>',
     ]
 
 
@@ -100,7 +111,7 @@ def _marker(x: float, y: float, kind: str, compact: bool = False) -> str:
         points = f"{x:.1f},{y-size:.1f} {x+size:.1f},{y:.1f} {x:.1f},{y+size:.1f} {x-size:.1f},{y:.1f}"
         return f'<polygon points="{points}" fill="{OPTIMAL}" stroke="{PAPER}" stroke-width="1"/>'
     if kind == "engine":
-        return f'<circle cx="{x:.1f}" cy="{y:.1f}" r="{size}" fill="{ENGINE}" stroke="{PAPER}" stroke-width="1"/>'
+        return f'<circle cx="{x:.1f}" cy="{y:.1f}" r="{size}" fill="{ENGINE}" stroke="{INK}" stroke-width="1.4"/>'
     return f'<rect x="{x-size:.1f}" y="{y-size:.1f}" width="{2*size:.1f}" height="{2*size:.1f}" fill="{USER}" stroke="{PAPER}" stroke-width="1"/>'
 
 
@@ -240,7 +251,7 @@ def write_buy_timing(path: Path, runs: list[RunEvaluation]) -> None:
     _write(path, "\n".join(lines) + "\n")
 
 
-def write_regret_comparison(path: Path, runs: list[RunEvaluation]) -> None:
+def _regret_series(runs: list[RunEvaluation]) -> list[tuple[str, str, list[float]]]:
     series: list[tuple[str, str, list[float]]] = []
     for label, color, attribute in (
         (_policy_label(runs, "engine"), ENGINE, "engine"),
@@ -252,38 +263,163 @@ def write_regret_comparison(path: Path, runs: list[RunEvaluation]) -> None:
             optimum = run.optimal.best_legitimate_eur
             if decision is not None and decision.legitimate and optimum is not None:
                 values.append(float(decision.actual_landed_eur - optimum))
-        series.append((label, color, values))
-    all_values = [value for _, _, values in series for value in values]
-    maximum = max(all_values or [1.0])
-    width, height = 1100, 520
-    left, top, plot_width = 230, 105, 800
+        series.append((label, color, sorted(values)))
+    return series
+
+
+def _quantile(values: list[float], fraction: float) -> float:
+    if not values:
+        return 0.0
+    ordered = sorted(values)
+    position = (len(ordered) - 1) * fraction
+    lower = int(position)
+    upper = min(lower + 1, len(ordered) - 1)
+    weight = position - lower
+    return ordered[lower] * (1 - weight) + ordered[upper] * weight
+
+
+def write_regret_comparison(path: Path, runs: list[RunEvaluation]) -> None:
+    """Show the typical distribution clearly while reporting every tail value."""
+    series = _regret_series(runs)
+    focus_source = max((_quantile(values, 0.90) for _, _, values in series), default=1.0)
+    focus_limit = max(5, int(ceil(focus_source / 5)) * 5)
+    width, height = 1200, 640
+    left, top, plot_width = 260, 145, 850
+    lane_gap = 165
     lines = _svg_start(
-        width, height,
+        width,
+        height,
         "Price gap from optimal by strategy",
-        "All legitimate purchase gaps from the full-horizon optimum, with means and medians for both strategies.",
+        f"Legitimate purchase gaps are shown on a focused zero-to-{focus_limit}-euro scale. Values beyond the scale are counted and their maxima are reported separately.",
     )
-    lines.append('<text x="40" y="38" class="title">How far was each purchase from the best possible price?</text>')
-    for tick_index in range(6):
-        value = maximum * tick_index / 5
-        x = left + plot_width * tick_index / 5
-        lines.append(f'<line x1="{x:.1f}" y1="{top-20}" x2="{x:.1f}" y2="{top+250}" stroke="{BORDER}"/>')
-        lines.append(f'<text x="{x:.1f}" y="{top+285}" text-anchor="middle" class="small">€{value:.0f}</text>')
+    lines.append('<text x="42" y="48" class="title">How far was each purchase from the best possible price?</text>')
+    lines.append(f'<text x="42" y="73" class="subtitle">Typical 90% in focus · all values above €{focus_limit} reported in the tail strip</text>')
+    for value in range(0, focus_limit + 1, 5):
+        x = left + plot_width * value / focus_limit
+        lines.append(f'<line x1="{x:.1f}" y1="{top-42}" x2="{x:.1f}" y2="{top+lane_gap+54}" stroke="{BORDER}"/>')
+        lines.append(f'<text x="{x:.1f}" y="{top+lane_gap+82}" text-anchor="middle" class="small">€{value}</text>')
     for lane, (label, color, values) in enumerate(series):
-        y = top + lane * 150
-        lines.append(f'<text x="{left-18}" y="{y+6}" text-anchor="end" class="label">{escape(label)}</text>')
-        for index, value in enumerate(values):
-            x = left + value / max(maximum, 0.01) * plot_width
-            jitter = ((index * 17) % 31 - 15) * 0.65
-            lines.append(f'<circle cx="{x:.1f}" cy="{y+jitter:.1f}" r="4" fill="{color}" fill-opacity="0.48"/>')
-        if values:
-            avg, med = mean(values), median(values)
-            avg_x = left + avg / maximum * plot_width
-            med_x = left + med / maximum * plot_width
-            lines.append(f'<line x1="{med_x:.1f}" y1="{y-27}" x2="{med_x:.1f}" y2="{y+27}" stroke="{INK}" stroke-width="3"/>')
-            points = f"{avg_x:.1f},{y-9:.1f} {avg_x+9:.1f},{y:.1f} {avg_x:.1f},{y+9:.1f} {avg_x-9:.1f},{y:.1f}"
-            lines.append(f'<polygon points="{points}" fill="{color}" stroke="{PAPER}"/>')
-            lines.append(f'<text x="{left+plot_width}" y="{y+48}" text-anchor="end" class="small">mean €{avg:.2f} · median €{med:.2f} · n={len(values)}</text>')
-    lines.append(f'<text x="{left+plot_width/2}" y="{height-45}" text-anchor="middle" class="label">Actual landed purchase price − full-horizon optimum</text>')
+        y = top + lane * lane_gap
+        visible = [value for value in values if value <= focus_limit]
+        tail = [value for value in values if value > focus_limit]
+        q1, med, q3 = (_quantile(values, fraction) for fraction in (0.25, 0.50, 0.75))
+        avg = mean(values) if values else 0.0
+        lines.append(f'<text x="{left-24}" y="{y-7}" text-anchor="end" class="label">{escape(label)}</text>')
+        lines.append(f'<text x="{left-24}" y="{y+17}" text-anchor="end" class="small">n={len(values)}</text>')
+        for index, value in enumerate(visible):
+            x = left + value / focus_limit * plot_width
+            jitter = ((index * 19) % 37 - 18) * 1.15
+            stroke = INK if color == ENGINE else PAPER
+            lines.append(f'<circle cx="{x:.1f}" cy="{y+jitter:.1f}" r="4.6" fill="{color}" fill-opacity="0.58" stroke="{stroke}" stroke-width=".8"/>')
+        q1_x = left + min(q1, focus_limit) / focus_limit * plot_width
+        med_x = left + min(med, focus_limit) / focus_limit * plot_width
+        q3_x = left + min(q3, focus_limit) / focus_limit * plot_width
+        avg_x = left + min(avg, focus_limit) / focus_limit * plot_width
+        lines.append(f'<line x1="{q1_x:.1f}" y1="{y+38}" x2="{q3_x:.1f}" y2="{y+38}" stroke="{INK}" stroke-width="8" stroke-linecap="square"/>')
+        lines.append(f'<line x1="{med_x:.1f}" y1="{y+27}" x2="{med_x:.1f}" y2="{y+49}" stroke="{PAPER}" stroke-width="3"/>')
+        points = f"{avg_x:.1f},{y+27:.1f} {avg_x+9:.1f},{y+38:.1f} {avg_x:.1f},{y+49:.1f} {avg_x-9:.1f},{y+38:.1f}"
+        lines.append(f'<polygon points="{points}" fill="{color}" stroke="{INK}" stroke-width="1"/>')
+        lines.append(f'<text x="{left}" y="{y+69}" class="small">median €{med:.2f} · mean €{avg:.2f} · middle 50% €{q1:.2f}–€{q3:.2f}</text>')
+        tail_text = f'{len(tail)} above €{focus_limit} · max €{max(tail):.2f}' if tail else f'0 above €{focus_limit}'
+        lines.append(f'<text x="{left+plot_width}" y="{y+69}" text-anchor="end" class="small">{tail_text}</text>')
+    engine_median = median(series[0][2]) if series[0][2] else 0.0
+    user_median = median(series[1][2]) if series[1][2] else 0.0
+    lines.append(f'<rect x="42" y="{height-94}" width="{width-84}" height="52" rx="8" fill="{BRAND}"/>')
+    lines.append(f'<text x="64" y="{height-61}" class="metric">Median gap: SolidHunt €{engine_median:.2f} · shopper €{user_median:.2f}</text>')
+    lines.append(f'<text x="{width-64}" y="{height-61}" text-anchor="end" class="label">Lower is better</text>')
+    lines.append("</svg>")
+    _write(path, "\n".join(lines) + "\n")
+
+
+def write_regret_cdf(path: Path, runs: list[RunEvaluation]) -> None:
+    """Plot cumulative price-gap performance without letting tails set the scale."""
+    series = _regret_series(runs)
+    width, height = 1100, 590
+    left, top, plot_width, plot_height = 100, 120, 780, 350
+    limit = 30
+    lines = _svg_start(
+        width,
+        height,
+        "Cumulative price gap from optimum",
+        "Cumulative share of legitimate purchases at or below each price gap from zero to thirty euros, with larger tails reported in labels.",
+    )
+    lines.append('<text x="42" y="48" class="title">How often does each policy stay close to the optimum?</text>')
+    lines.append('<text x="42" y="73" class="subtitle">Cumulative share of legitimate purchases · higher and further left is better</text>')
+    for percent in range(0, 101, 20):
+        y = top + plot_height * (1 - percent / 100)
+        lines.append(f'<line x1="{left}" y1="{y:.1f}" x2="{left+plot_width}" y2="{y:.1f}" stroke="{BORDER}"/>')
+        lines.append(f'<text x="{left-16}" y="{y+4:.1f}" text-anchor="end" class="small">{percent}%</text>')
+    for value in range(0, limit + 1, 5):
+        x = left + plot_width * value / limit
+        lines.append(f'<line x1="{x:.1f}" y1="{top}" x2="{x:.1f}" y2="{top+plot_height}" stroke="{BORDER}"/>')
+        lines.append(f'<text x="{x:.1f}" y="{top+plot_height+27}" text-anchor="middle" class="small">€{value}</text>')
+    for lane, (_label, color, values) in enumerate(series):
+        points = []
+        for step in range(0, 121):
+            value = limit * step / 120
+            share = sum(item <= value for item in values) / max(len(values), 1)
+            x = left + plot_width * value / limit
+            y = top + plot_height * (1 - share)
+            points.append(f'{x:.1f},{y:.1f}')
+        stroke = ENGINE_LINE if color == ENGINE else USER
+        dash = '' if color == ENGINE else ' stroke-dasharray="9 6"'
+        lines.append(f'<polyline points="{" ".join(points)}" fill="none" stroke="{stroke}" stroke-width="4"{dash}/>')
+        within_ten = 100 * sum(item <= 10 for item in values) / max(len(values), 1)
+        within_thirty = 100 * sum(item <= limit for item in values) / max(len(values), 1)
+        label_y = 150 + lane * 118
+        swatch = BRAND if color == ENGINE else USER
+        short_label = "SolidHunt" if lane == 0 else "Shopper · 3-day"
+        lines.append(f'<rect x="920" y="{label_y-19}" width="18" height="18" fill="{swatch}" stroke="{INK}" stroke-width="1"/>')
+        lines.append(f'<text x="950" y="{label_y-5}" class="label">{escape(short_label)}</text>')
+        lines.append(f'<text x="920" y="{label_y+26}" class="metric">{within_ten:.1f}%</text>')
+        lines.append(f'<text x="920" y="{label_y+46}" class="small">within €10</text>')
+        lines.append(f'<text x="920" y="{label_y+75}" class="small">{within_thirty:.1f}% within €30</text>')
+    lines.append(f'<text x="{left+plot_width/2}" y="{height-47}" text-anchor="middle" class="label">Price paid above the full-horizon optimum</text>')
+    lines.append("</svg>")
+    _write(path, "\n".join(lines) + "\n")
+
+
+def write_paired_outcomes(path: Path, runs: list[RunEvaluation]) -> None:
+    """Count paired wins, ties, and losses without relying on the outlier-led mean."""
+    differences = []
+    for run in runs:
+        if (
+            run.engine is not None
+            and run.user is not None
+            and run.engine.legitimate
+            and run.user.legitimate
+        ):
+            differences.append(float(run.user.actual_landed_eur - run.engine.actual_landed_eur))
+    solid_wins = sum(value > 0 for value in differences)
+    ties = sum(value == 0 for value in differences)
+    shopper_wins = sum(value < 0 for value in differences)
+    counts = [
+        ("SolidHunt cheaper", solid_wins, BRAND),
+        ("Same landed price", ties, SOFT),
+        ("Shopper cheaper", shopper_wins, PAPER),
+    ]
+    width, height = 1100, 500
+    left, top, plot_width = 80, 155, 940
+    lines = _svg_start(
+        width,
+        height,
+        "Paired legitimate purchase outcomes",
+        "Counts of runs where SolidHunt was cheaper, both policies paid the same landed price, or the shopper was cheaper among runs where both made legitimate purchases.",
+    )
+    lines.append('<text x="42" y="48" class="title">When both bought, who paid less?</text>')
+    lines.append(f'<text x="42" y="73" class="subtitle">{len(differences)} paired legitimate purchases · landed price compared run by run</text>')
+    cursor = left
+    for label, count, color in counts:
+        segment = plot_width * count / max(len(differences), 1)
+        lines.append(f'<rect x="{cursor:.1f}" y="{top}" width="{segment:.1f}" height="92" fill="{color}" stroke="{INK}" stroke-width="1"/>')
+        lines.append(f'<text x="{cursor+segment/2:.1f}" y="{top+43}" text-anchor="middle" font-size="30" font-weight="750">{count}</text>')
+        lines.append(f'<text x="{cursor+segment/2:.1f}" y="{top+69}" text-anchor="middle" class="small">{100*count/max(len(differences), 1):.1f}%</text>')
+        lines.append(f'<text x="{cursor+segment/2:.1f}" y="{top+125}" text-anchor="middle" class="label">{escape(label)}</text>')
+        cursor += segment
+    average = mean(differences) if differences else 0.0
+    lines.append(f'<rect x="{left}" y="{top+180}" width="{plot_width}" height="82" rx="8" fill="{INK}"/>')
+    lines.append(f'<text x="{left+28}" y="{top+215}" style="fill:{BRAND}" class="metric">Average paired saving: €{average:.2f}</text>')
+    lines.append(f'<text x="{left+28}" y="{top+241}" style="fill:{PAPER}" class="small">Positive means the shopper paid more; the win/tie/loss counts keep the large tail savings in context.</text>')
     lines.append("</svg>")
     _write(path, "\n".join(lines) + "\n")
 
@@ -341,7 +477,7 @@ def write_shopper_sensitivity(
     rows = [
         ("SolidHunt improved", ENGINE, three_day_summary["policies"][engine_name]),
         ("Shopper · every 3 days", USER, three_day_summary["policies"][three_name]),
-        ("Shopper · weekly", "#D49A4A", weekly_summary["policies"][weekly_name]),
+        ("Shopper · weekly", HOLD, weekly_summary["policies"][weekly_name]),
     ]
     metrics = [
         ("Legitimate purchase rate", "%", lambda item: 100 * item["legitimate_purchases"] / item["runs"]),
@@ -384,4 +520,6 @@ def write_all_plots(output: Path, runs: list[RunEvaluation]) -> None:
     write_detailed_timelines(plots / "timelines", runs)
     write_buy_timing(plots / "buy-timing.svg", runs)
     write_regret_comparison(plots / "price-gap-comparison.svg", runs)
+    write_regret_cdf(plots / "price-gap-cdf.svg", runs)
+    write_paired_outcomes(plots / "paired-outcomes.svg", runs)
     write_outcomes(plots / "outcomes.svg", runs)

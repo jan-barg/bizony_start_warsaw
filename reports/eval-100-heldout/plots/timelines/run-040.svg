@@ -2,7 +2,14 @@
 <title id="title">Timeline run-040</title>
 <desc id="desc">Full 90-day legitimate landed-price curve with cap and purchase markers.</desc>
 <rect width="1200" height="480" fill="#FFFFFF"/>
-<style>text{font-family:Inter,Arial,sans-serif;fill:#080808} .small{font-size:11px} .label{font-size:13px;font-weight:600} .title{font-size:22px;font-weight:700}</style>
+<rect width="1200" height="8" fill="#43F27E"/>
+<style>text{font-family:Inter,Arial,Helvetica,sans-serif;fill:#080808} .small{font-size:11px} .label{font-size:13px;font-weight:650} .title{font-size:24px;font-weight:750;letter-spacing:-.7px} .subtitle{font-size:12px;fill:#59615B} .metric{font-size:18px;font-weight:750;letter-spacing:-.3px}</style>
+<g aria-label="SolidHunt" transform="translate(1034 19)">
+<rect width="28" height="28" fill="#43F27E"/>
+<path d="M6 12V6H12 M16 6H22V12 M22 16V22H16 M12 22H6V16" fill="none" stroke="#080808" stroke-width="3"/>
+<rect x="13" y="13" width="3" height="3" fill="#080808" transform="rotate(45 14.5 14.5)"/>
+<text x="38" y="21" font-size="17" letter-spacing="-.7"><tspan font-weight="500">solid</tspan><tspan font-weight="750">hunt</tspan></text>
+</g>
 <text x="48" y="40" class="title">run-040 · SH022937 · EU 41</text>
 <text x="48" y="66" class="label">Cap €195.25 · optimum €171.53 on day 5</text>
 <rect x="70.0" y="95.0" width="1080.0" height="310.0" fill="#F4F6F3" stroke="#D8DDD9"/>
@@ -11,13 +18,13 @@
 <path d="M664.6,190.3 L676.7,198.3 L688.9,210.2 L701.0,218.5 L713.1,228.9 L725.3,227.6 L737.4,220.1 L749.6,224.6 L761.7,259.4 L773.8,270.2 L786.0,259.5 L798.1,262.2 L810.2,250.5 L822.4,254.7 L834.5,233.2" fill="none" stroke="#59615B" stroke-width="1.5"/>
 <path d="M919.4,203.9 L931.6,206.2 L943.7,229.3 L955.8,209.5 L968.0,212.0 L980.1,198.6 L992.2,184.9 L1004.4,182.5 L1016.5,161.7 L1028.7,155.8 L1040.8,160.0 L1052.9,158.8 L1065.1,159.1 L1077.2,129.9 L1089.3,133.7 L1101.5,121.2 L1113.6,116.4 L1125.7,139.7 L1137.9,150.5 L1150.0,160.5" fill="none" stroke="#59615B" stroke-width="1.5"/>
 <polygon points="130.7,377.6 136.7,383.6 130.7,389.6 124.7,383.6" fill="#2859C5" stroke="#FFFFFF" stroke-width="1"/>
-<circle cx="130.7" cy="308.6" r="6" fill="#137A3D" stroke="#FFFFFF" stroke-width="1"/>
-<rect x="136.8" y="309.2" width="12.0" height="12.0" fill="#A76100" stroke="#FFFFFF" stroke-width="1"/>
+<circle cx="130.7" cy="308.6" r="6" fill="#43F27E" stroke="#080808" stroke-width="1.4"/>
+<rect x="136.8" y="309.2" width="12.0" height="12.0" fill="#080808" stroke="#FFFFFF" stroke-width="1"/>
 <text x="70.0" y="430" text-anchor="middle" class="small">day 0</text>
 <text x="434.0" y="430" text-anchor="middle" class="small">day 30</text>
 <text x="798.1" y="430" text-anchor="middle" class="small">day 60</text>
 <text x="1150.0" y="430" text-anchor="middle" class="small">day 89</text>
-<text x="70" y="460" class="small" fill="#137A3D">● SolidHunt improved monitor: day 5, €187.39</text>
-<text x="380" y="460" class="small" fill="#A76100">■ Casual checkout shopper (3-day): day 6, €185.98</text>
+<text x="70" y="460" class="small" fill="#43F27E">● SolidHunt improved monitor: day 5, €187.39</text>
+<text x="380" y="460" class="small" fill="#080808">■ Casual checkout shopper (3-day): day 6, €185.98</text>
 <text x="850" y="460" class="small" fill="#2859C5">◆ Optimal: day 5, €171.53</text>
 </svg>
