@@ -2,6 +2,7 @@
 	// Screen ② — Mandate Confirm. Renders the compiled mandate as a human card.
 	// Editable fields PATCH /hunts/{id}/mandate on change (pre-confirm only);
 	// Confirm → POST confirm, then run_immediate (③a) or start (③b) by mode.
+	import { onMount } from 'svelte';
 	import { page } from '$app/state';
 	import { goto } from '$app/navigation';
 	import { get } from 'svelte/store';
@@ -28,9 +29,12 @@
 	let capInput = $state('');
 	let alertBudgetInput = $state('');
 
-	$effect(() => {
-		load();
-	});
+	// onMount, NOT $effect: load() writes state it also reads (mandate →
+	// capInput), which inside $effect self-retriggers until Svelte kills the
+	// effect tree (effect_update_depth_exceeded) — after that, goto() updates
+	// the URL but nothing re-renders. One-shot async loads never belong in
+	// $effect.
+	onMount(load);
 
 	async function load() {
 		try {

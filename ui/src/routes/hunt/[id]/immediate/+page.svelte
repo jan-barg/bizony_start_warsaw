@@ -2,6 +2,7 @@
 	// Screen ③a — Immediate Result. BUY → winner card with the full line-item
 	// table; ESCALATE_NONE_FOUND → ranked near-misses ("approvable" badge comes
 	// straight from the eligibility field) + a prominent "Switch to monitor".
+	import { onMount } from 'svelte';
 	import { page } from '$app/state';
 	import { goto } from '$app/navigation';
 	import { get } from 'svelte/store';
@@ -20,9 +21,7 @@
 	const receipt = $derived(result?.receipt ?? null);
 	const winner = $derived(receipt?.chosen ?? null);
 
-	$effect(() => {
-		load();
-	});
+	onMount(load); // not $effect — see confirm page note (self-retriggering effect)
 
 	async function load() {
 		const stashed = get(immediateByHunt)[huntId];

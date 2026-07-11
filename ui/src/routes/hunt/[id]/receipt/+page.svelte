@@ -2,6 +2,7 @@
 	// Screen ④ — Purchase Receipt. Fetches GET /hunts/{id}/receipts, finds the
 	// BUY receipt, renders the full receipt card: line items summing to landed,
 	// escalation tier, decided_by, stopping snapshot, reasons.
+	import { onMount } from 'svelte';
 	import { page } from '$app/state';
 	import { getReceipts } from '$lib/api.js';
 	import { eur } from '$lib/format.js';
@@ -16,9 +17,7 @@
 
 	const quote = $derived(buy?.chosen?.quote ?? null);
 
-	$effect(() => {
-		load();
-	});
+	onMount(load); // not $effect — see confirm page note (self-retriggering effect)
 
 	async function load() {
 		try {
