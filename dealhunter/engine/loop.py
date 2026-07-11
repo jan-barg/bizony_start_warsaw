@@ -1,4 +1,4 @@
-"""Tick loop & hunt state machine — STUB, contract only (spec §6).
+"""Execution entry points; immediate mode is implemented (spec §6).
 Owner: feat/engine (Work Order 2). Signatures are frozen; bodies are not.
 
 Normative reminders:
@@ -12,8 +12,10 @@ Normative reminders:
 from __future__ import annotations
 
 from ..core.config import Constants
+from ..core.enums import Mode
 from ..core.models import Hunt, Receipt, World
 from ..llm.client import LLMClient
+from .policy import evaluate_tick
 
 
 def run_monitor(hunt: Hunt, world: World, cfg: Constants, llm: LLMClient) -> list[Receipt]:
@@ -21,4 +23,11 @@ def run_monitor(hunt: Hunt, world: World, cfg: Constants, llm: LLMClient) -> lis
 
 
 def run_immediate(hunt: Hunt, world: World, cfg: Constants, llm: LLMClient) -> Receipt:
-    raise NotImplementedError("feat/engine — spec §6")
+    """Run the immediate engine at the hunt's start tick.
+
+    Order cancellation/refund processing belongs to the later lifecycle
+    checkpoint; this slice returns the deterministic primary decision receipt.
+    """
+    if hunt.mandate.mode != Mode.IMMEDIATE:
+        raise ValueError("run_immediate requires an IMMEDIATE mandate")
+    return evaluate_tick(hunt, hunt.start_tick, world, cfg, llm)
