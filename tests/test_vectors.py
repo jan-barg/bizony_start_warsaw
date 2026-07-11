@@ -165,15 +165,33 @@ def test_v8_receipt_sum_property():
 def test_v8a_coupon_boundary_trio():
     w = world()
     route = RouteSpec(kind="direct", observation_geo=Geo.PL, access_tier=AccessTier.BASE)
-    # (a) expired-by-one: coupon valid 0..3, attached at tick 4 ⇒ omitted + reason
+    # (a) expired-by-one: coupon valid 0..3, still attached at tick 4 ⇒ omitted + reason
     q = assemble("l_v001_GW2288", route, tick=4, world=w, cfg=CFG)
     assert "COUPON" not in by_code(q.line_items)
-    # (c) excludes_sale on an on_sale tick ⇒ omitted
+    assert "coupon_invalid:expired" in q.notes
+    # (c) excludes_sale on an on_sale tick ⇒ omitted + reason
     q = assemble("l_v002_DD1391-100", route, tick=5, world=w, cfg=CFG)
     assert "COUPON" not in by_code(q.line_items)
-    # (b) min_basket exactly == sticker ⇒ applies (≤ inclusive): tick 0, sticker 105 ≥ 50
+    assert "coupon_invalid:excludes_sale" in q.notes
+    # ordinary valid pct coupon applies (tick 2, sticker 105.00, min_basket 50.00)
     q = assemble("l_v002_DD1391-100", route, tick=2, world=w, cfg=CFG)
     assert by_code(q.line_items)["COUPON"] == D("-10.50")
+
+
+@engine_pending
+def test_v8a_min_basket_exact_boundary():
+    """(b) min_basket EXACTLY equal to sticker ⇒ applies — the ≤ is inclusive.
+    An implementation using strict < fails here."""
+    w = world()
+    boundary = Coupon(id="c_l_v002_DD1391-100_0", code="EDGE", kind="flat", value=D("5.00"),
+                      min_basket=D("105.00"), excludes_sale=False, valid_from=0, valid_to=1)
+    w = w.model_copy(update={"coupons": [*w.coupons, boundary]})
+    for pe in w.price_events:
+        if pe.listing_id == "l_v002_DD1391-100" and pe.tick == 0:
+            pe.coupon_id = boundary.id     # sticker at tick 0 is exactly 105.00
+    route = RouteSpec(kind="direct", observation_geo=Geo.PL, access_tier=AccessTier.BASE)
+    q = assemble("l_v002_DD1391-100", route, tick=0, world=w, cfg=CFG)
+    assert by_code(q.line_items)["COUPON"] == D("-5.00")
 
 
 # --------------------------------------------------------------------- V9/V10

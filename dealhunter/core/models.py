@@ -52,6 +52,12 @@ def quote_hash(quote: "RouteQuote") -> str:
     return hashlib.sha256(canonical_json(quote).encode()).hexdigest()
 
 
+def declined_key(listing_id: str, kind: AskKind) -> str:
+    """The one true key format for Hunt.declined_asks — spec §5.9's
+    (listing, kind) pair, flattened for JSON dict keys."""
+    return f"{listing_id}:{kind.value}"
+
+
 # ---------------------------------------------------------------------------
 # §3.2 World models (generated once per seed, immutable thereafter)
 # ---------------------------------------------------------------------------
@@ -91,7 +97,10 @@ class Vendor(BaseModel):
     currency: Currency
     channel: Channel
     ships_to: set[Geo]                  # PL ∈ ships_to ⇔ direct route exists
-    shipping_table: dict[str, tuple[Decimal, Carrier]]  # dest Zone/Geo value → (cost in vendor ccy, carrier)
+    shipping_table: dict[str, tuple[Decimal, Carrier]]
+    # shipping_table keys (normative): Zone values ("EU","UK","US","JP") for export rows,
+    # Geo values for domestic-specific rows. Lookup order: exact Geo key, then the
+    # destination's Zone key. Plain str because Zone and Geo share member values.
     domestic_shipping: tuple[Decimal, Carrier]
     return_days: int                    # 0 = no returns
     domain_age_days: int
@@ -155,10 +164,10 @@ class Coupon(BaseModel):
     code: str
     kind: Literal["pct", "flat"]
     value: Decimal
-    min_basket: Decimal | None = None   # vendor currency
-    excludes_sale: bool = False
-    valid_from: int = 0                 # inclusive ticks
-    valid_to: int = 0
+    min_basket: Decimal | None          # vendor currency; None = no minimum (explicit)
+    excludes_sale: bool                 # REQUIRED — defaults here would let the generator
+    valid_from: int                     # silently emit tick-0-only coupons (verifier finding)
+    valid_to: int                       # inclusive ticks
 
 
 class FxRate(BaseModel):
@@ -248,7 +257,9 @@ class Mandate(BaseModel):
     geo_arbitrage: GeoArb = GeoArb.ASK
     overcap_ask_band_pct: Decimal = Decimal("0.10")   # §5.9; 0 disables over-cap asks
     alert_budget_per_week: int = 2
-    expires_tick: int = 90              # absolute; loop runs to expires−1 (§6.2)
+    expires_tick: int                   # absolute; REQUIRED — set to start + horizon at hunt
+                                        # creation; a schema default would silently mis-expire
+                                        # later-starting hunts (§6.3 inv. 2)
     revoked: bool = False
 
 
@@ -296,6 +307,8 @@ class RouteQuote(BaseModel):            # one PRICED way to obtain one listing a
     landed_eur: Decimal                 # = exact sum of line_items (§2.1)
     eta_ticks: int
     p_cancel_est: Decimal = Decimal("0")   # agent's estimate; 0 unless IP_GATED
+    notes: list[str] = []               # assembly annotations, e.g. "coupon_invalid:expired" /
+                                        # "coupon_invalid:excludes_sale" (§5.5); flow into receipts
 
 
 class MatchResult(BaseModel):           # §5.1 output
@@ -365,8 +378,8 @@ class Hunt(BaseModel):
     history_best_any: list[Decimal] = []  # per-tick best over QUALIFYING ∪ OVER_CAP_BAND (§5.9 E3)
     interruptions: list[tuple[int, str, str]] = []  # (tick, listing_id, kind∈{ALERT,GRAY_ROUTE,OVER_CAP})
     pending_ask: Ask | None = None      # ≤ 1 at any time; clock paused while pending
-    declined_asks: dict[str, Decimal] = {}  # key "{listing_id}:{ask_kind}" → landed at decline;
-                                        # re-ask only on REASK_IMPROVEMENT (§5.9)
+    declined_asks: dict[str, Decimal] = {}  # key = declined_key(listing_id, kind) → landed at
+                                        # decline; re-ask only on REASK_IMPROVEMENT (§5.9)
     orders: list[Order] = []            # append-only ledger; ≤1 in PLACED/CONFIRMED (inv. 8)
     excluded_listings: set[str] = set() # merchant-cancelled listings — never re-bought this hunt
 

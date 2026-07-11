@@ -131,3 +131,8 @@ class Constants:
             N_MIDDLEMEN=2,
             TRAP_COUNTS={k: 1 for k in self.TRAP_COUNTS},
         )
+
+
+# The spec's prose says "modules receive Config explicitly" (§12) — alias so an
+# agent grepping either name lands here.
+Config = Constants

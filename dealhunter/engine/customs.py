@@ -9,6 +9,8 @@ Normative reminders for the implementer:
 - transport_eur = SHIP_DIRECT (direct) or SHIP_DOM + SHIP_INTL (middleman).
 - Rules 3/4 (> 150): duty_rate 0 only if preferential(zone, origin);
   VAT on (customs_value + duty). Handling fee by carrier.
+- ZERO-AMOUNT LINES ARE OMITTED from the returned list (a preferential-origin
+  import has no DUTY line at all, not DUTY 0.00 — V5 asserts absence).
 """
 from __future__ import annotations
 
