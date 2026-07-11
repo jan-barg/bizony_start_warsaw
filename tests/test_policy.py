@@ -254,6 +254,26 @@ def test_immediate_receipt_is_byte_deterministic_and_sums_lines():
     ) == first.chosen.quote.landed_eur
 
 
+def test_matcher_is_memoized_per_hunt_and_listing(monkeypatch):
+    calls = 0
+
+    def counted(listing, *args, **kwargs):
+        nonlocal calls
+        calls += 1
+        if listing.id.endswith("_DD1391-100"):
+            return MatchResult(
+                style_code="DD1391-100", colorway_confirmed=True, confidence=0.99
+            )
+        return MatchResult()
+
+    monkeypatch.setattr("dealhunter.engine.policy.match", counted)
+    current = monitor_hunt(expires=3)
+    evaluate_tick(current, 0, world(), CFG, NullClient())
+    first_tick_calls = calls
+    evaluate_tick(current, 1, world(), CFG, NullClient())
+    assert calls == first_tick_calls
+
+
 def test_monitor_warmup_alerts_then_holds_with_stopping_evidence():
     current = monitor_hunt()
     first = evaluate_tick(current, 0, world(), CFG, NullClient())

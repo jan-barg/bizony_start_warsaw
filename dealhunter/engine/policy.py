@@ -28,7 +28,15 @@ from ..core.enums import (
     Mode,
 )
 from ..core.ids import receipt_id
-from ..core.models import Evaluation, Hunt, MatchResult, Receipt, World, quote_hash
+from ..core.models import (
+    Evaluation,
+    Hunt,
+    MatchResult,
+    Receipt,
+    World,
+    canonical_json,
+    quote_hash,
+)
 from ..llm.client import LLMClient
 from .landed import assemble
 from .matcher import match
@@ -44,6 +52,9 @@ from .alerts import (
 from .stopping import deal_percentile, final_buy_tick, p_better, stopping_decision
 
 
+_MATCH_MEMO: dict[tuple[int, int, str, str, str, str], MatchResult] = {}
+
+
 def _one(items, predicate, description: str):
     matches = [item for item in items if predicate(item)]
     if len(matches) != 1:
@@ -52,18 +63,18 @@ def _one(items, predicate, description: str):
 
 
 def _match_listing(listing, hunt: Hunt, world: World, llm: LLMClient) -> MatchResult:
-    """Use D's matcher, with a narrow Stage-0 fallback for pinned style codes."""
-    try:
-        return match(listing, hunt.brief, world, llm)
-    except NotImplementedError:
-        pinned = hunt.brief.style_code
-        if pinned is not None and listing.id.endswith(f"_{pinned}"):
-            return MatchResult(
-                style_code=pinned,
-                colorway_confirmed=True,
-                confidence=0.99,
-            )
-        return MatchResult()
+    """Memoize D's static-title matcher once per hunt and listing."""
+    key = (
+        id(match),
+        world.seed,
+        hunt.id,
+        listing.id,
+        canonical_json(hunt.brief),
+        type(llm).__qualname__,
+    )
+    if key not in _MATCH_MEMO:
+        _MATCH_MEMO[key] = match(listing, hunt.brief, world, llm)
+    return _MATCH_MEMO[key]
 
 
 def _evaluation_sort_key(evaluation: Evaluation):

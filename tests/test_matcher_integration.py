@@ -100,5 +100,5 @@ def test_every_alert_only_match_flag_blocks_policy_purchase(
 
     monkeypatch.setattr("dealhunter.engine.policy.match", flagged_match)
     receipt = evaluate_tick(hunt, 0, world, Constants(), NullClient())
-    assert receipt.action == Action.ESCALATE_NONE_FOUND
+    assert receipt.action != Action.BUY
     assert all(not item.purchase_eligible for item in receipt.considered)

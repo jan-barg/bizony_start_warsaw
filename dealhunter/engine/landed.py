@@ -9,12 +9,28 @@ finalization; landed_eur = exact sum of quantized lines, never re-rounded.
 from __future__ import annotations
 
 from decimal import Decimal
+from typing import Literal
 
 from ..core.config import Constants
 from ..core.enums import AccessTier, Currency, GEO_TO_ZONE, Geo
 from ..core.money import q2, to_eur
 from ..core.models import LineItem, RouteQuote, RouteSpec, World
 from .customs import import_charges
+
+
+LineItemCode = Literal[
+    "GOODS",
+    "COUPON",
+    "SHIP_DIRECT",
+    "SHIP_DOM",
+    "MM_FLAT",
+    "MM_PCT",
+    "SHIP_INTL",
+    "DUTY",
+    "DUTY_FLAT",
+    "VAT_IMPORT",
+    "HANDLING",
+]
 
 
 def _one(items, predicate, description: str):
@@ -24,7 +40,7 @@ def _one(items, predicate, description: str):
     return matches[0]
 
 
-def _line(code: str, label: str, amount: Decimal) -> LineItem:
+def _line(code: LineItemCode, label: str, amount: Decimal) -> LineItem:
     return LineItem(code=code, label=label, amount_eur=q2(amount))
 
 
@@ -114,7 +130,12 @@ def assemble(listing_id: str, route: RouteSpec, tick: int, world: World, cfg: Co
             lines.append(_coupon_line(coupon, sticker, rate))
 
     intrinsic = sum(
-        line.amount_eur for line in lines if line.code in {"GOODS", "COUPON"}
+        (
+            line.amount_eur
+            for line in lines
+            if line.code in {"GOODS", "COUPON"}
+        ),
+        Decimal("0"),
     )
 
     if route.kind == "direct":

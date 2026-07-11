@@ -82,5 +82,15 @@ stopping is the next planned slice.
   identical SHA-256
   `a8428d5c93b7b9196606d849ab6ddfa82e1dc5127de07c823a76361b65710989`.
 
-Still external to B: Person D's matcher integration and Person A's evaluation
-harness. The pinned-style fallback stays in place until D's branch is merged.
+Person D's matcher is integrated and memoized by `(world, hunt, listing, brief,
+client type)`; the temporary pinned-style fallback has been removed. Person A's
+evaluation harness remains external to B.
+
+Static integration note: B-owned engine modules pass mypy. The latest merged
+`develop` still reports unrelated type errors in API/world files and six Ruff
+unused-import findings already recorded by Person D's handoff; they are not
+modified from this engine branch.
+
+Matcher integration note: D's original alert-only policy test required E5, but
+the governing §5.8 order permits ALERT before E5. The integrated assertion now
+checks the actual safety contract: no BUY and `purchase_eligible=False`.
