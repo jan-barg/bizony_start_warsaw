@@ -397,4 +397,3 @@ We may not say:
 - Kohler and Walk, *On data-based optimal stopping under stationarity and
   ergodicity*: context for nonparametric stopping from observed histories.
   <https://arxiv.org/abs/1307.5976>
-
