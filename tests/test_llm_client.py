@@ -82,6 +82,13 @@ def test_openai_client_translates_canonical_envelope() -> None:
     ]
 
 
+def test_openai_client_canonicalizes_mapping_input_for_responses_api() -> None:
+    sdk = FakeSDK('{"choice":"A"}')
+    request = {**REQUEST, "input": {"z": 1, "a": "value"}}
+    OpenAIClient(Constants(), sdk_client=sdk).complete(request)
+    assert sdk.responses.calls[0]["input"] == '{"a":"value","z":1}'
+
+
 @pytest.mark.parametrize("output", ["", "not json", "[]", '{"abstain":true} trailing'])
 def test_openai_client_rejects_refusal_or_malformed_output(output: str) -> None:
     with pytest.raises(LLMProtocolError):

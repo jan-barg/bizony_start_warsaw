@@ -85,13 +85,22 @@ class OpenAIClient:
     def complete(self, request: dict) -> dict:
         envelope = _LLMRequest.parse(request)
         schema_name = re.sub(r"[^A-Za-z0-9_-]", "_", envelope.surface)
+        api_input = envelope.input
+        if not isinstance(api_input, (str, list)):
+            api_input = json.dumps(
+                api_input,
+                sort_keys=True,
+                separators=(",", ":"),
+                ensure_ascii=False,
+                allow_nan=False,
+            )
         response = self._sdk.responses.create(
             model=self.model_pin,
             store=False,
             reasoning={"effort": self._reasoning_effort},
             max_output_tokens=self._max_output_tokens,
             instructions=envelope.instructions,
-            input=envelope.input,
+            input=api_input,
             text={
                 "format": {
                     "type": "json_schema",
