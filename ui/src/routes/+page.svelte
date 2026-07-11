@@ -3,7 +3,7 @@
 	// intake returns NEEDS_INFO, clarifying questions render chat-style and
 	// each reply POSTs /intake/{id}/clarify until status is OK.
 	import { goto } from '$app/navigation';
-	import { postIntake, postClarify, postStructuredIntake } from '$lib/api.js';
+	import { postIntake, postClarify } from '$lib/api.js';
 	import { intakeByHunt, stash } from '$lib/stores.js';
 
 	let text = $state('');
@@ -13,10 +13,6 @@
 	let reply = $state('');
 	let busy = $state(false);
 	let error = $state('');
-	let structured = $state(false);
-	let form = $state({ product_query: '', style_code: '', size_eu: '', cap_landed_eur: '' });
-	let imageB64 = $state(null);
-	let imageName = $state('');
 
 	function onResult(res) {
 		if (res.status === 'NEEDS_INFO') {
@@ -41,47 +37,7 @@
 		chat = [{ role: 'user', lines: [finalText] }];
 		intakeId = null;
 		try {
-			onResult(await postIntake(finalText, mode, imageB64));
-		} catch (e) {
-			if (e.status === 503) {
-				structured = true;
-				error = 'The language model is offline. Use the deterministic form below.';
-			} else {
-				error = e.message;
-			}
-		} finally {
-			busy = false;
-		}
-	}
-
-	async function attachScreenshot(event) {
-		const file = event.currentTarget.files?.[0];
-		if (!file) {
-			imageB64 = null;
-			imageName = '';
-			return;
-		}
-		const bytes = new Uint8Array(await file.arrayBuffer());
-		let binary = '';
-		for (const byte of bytes) binary += String.fromCharCode(byte);
-		imageB64 = btoa(binary);
-		imageName = file.name;
-	}
-
-	async function submitStructured() {
-		if (!form.product_query.trim() || !form.size_eu || !form.cap_landed_eur || busy) return;
-		busy = true;
-		error = '';
-		try {
-			onResult(
-				await postStructuredIntake({
-					product_query: form.product_query.trim(),
-					style_code: form.style_code.trim() || null,
-					size_eu: String(form.size_eu),
-					cap_landed_eur: String(form.cap_landed_eur),
-					mode
-				})
-			);
+			onResult(await postIntake(finalText, mode));
 		} catch (e) {
 			error = e.message;
 		} finally {
@@ -142,43 +98,10 @@
 			{busy ? 'Working…' : 'Start the hunt'}
 		</button>
 	</div>
-	<label class="screenshot small">
-		Screenshot <span class="muted">(PNG, JPEG, or WebP; optional)</span>
-		<input type="file" accept="image/png,image/jpeg,image/webp" onchange={attachScreenshot} />
-		{#if imageName}<span class="muted">Attached: {imageName}</span>{/if}
-	</label>
 </div>
 
 {#if error}
 	<div class="banner error" role="alert">{error}</div>
-{/if}
-
-{#if structured}
-	<div class="card soft structured-form">
-		<h2>Enter hunt details</h2>
-		<p class="small muted">These fields are validated by code. Product, size, and cap are never guessed.</p>
-		<label>
-			Brand, model, and colorway
-			<input bind:value={form.product_query} placeholder="Nike Dunk Low Panda" />
-		</label>
-		<label>
-			Style code <span class="muted">(optional)</span>
-			<input bind:value={form.style_code} placeholder="DD1391-100" />
-		</label>
-		<div class="form-row">
-			<label>
-				EU size
-				<input type="number" min="35" max="50" step="0.5" bind:value={form.size_eu} />
-			</label>
-			<label>
-				Maximum landed EUR
-				<input type="number" min="1" step="0.01" bind:value={form.cap_landed_eur} />
-			</label>
-		</div>
-		<button class="primary" onclick={submitStructured} disabled={busy || !form.product_query.trim() || !form.size_eu || !form.cap_landed_eur}>
-			{busy ? 'Validating…' : 'Compile mandate'}
-		</button>
-	</div>
 {/if}
 
 {#if chat.length}
@@ -246,11 +169,6 @@
 		font-size: 14px;
 	}
 
-	.screenshot {
-		display: grid;
-		gap: 5px;
-	}
-
 	.chat-line {
 		margin: 0;
 	}
@@ -267,27 +185,5 @@
 
 	.reply-row input {
 		flex: 1;
-	}
-
-	.structured-form {
-		display: grid;
-		gap: 14px;
-		margin-top: 18px;
-	}
-
-	.structured-form h2,
-	.structured-form p {
-		margin: 0;
-	}
-
-	.structured-form label {
-		display: grid;
-		gap: 6px;
-	}
-
-	.form-row {
-		display: grid;
-		grid-template-columns: repeat(2, minmax(0, 1fr));
-		gap: 12px;
 	}
 </style>
