@@ -107,6 +107,10 @@ def test_cache_warm_then_replay_with_stable_key(tmp_path: Path) -> None:
     replay = CachedClient(replay_upstream, path, "model-a", CacheMode.REPLAY)
     assert replay.complete(reordered) == {"choice": "A", "reason": "ok"}
     assert replay_upstream.calls == 0
+    with sqlite3.connect(path) as connection:
+        assert connection.execute("SELECT DISTINCT created FROM llm_cache").fetchall() == [
+            ("1970-01-01T00:00:00+00:00",)
+        ]
 
 
 def test_replay_miss_never_calls_upstream_or_creates_database(tmp_path: Path) -> None:

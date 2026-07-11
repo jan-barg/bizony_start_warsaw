@@ -4,11 +4,13 @@ from __future__ import annotations
 import hashlib
 import json
 import sqlite3
-from datetime import UTC, datetime
 from enum import StrEnum
 from pathlib import Path
 
 from .client import LLMClient, LLMProtocolError
+
+
+_DETERMINISTIC_CREATED = "1970-01-01T00:00:00+00:00"
 
 
 class CacheMode(StrEnum):
@@ -113,6 +115,6 @@ class CachedClient:
         with self._connect() as connection:
             connection.execute(
                 "INSERT INTO llm_cache(key, response, created) VALUES (?, ?, ?)",
-                (key, normalized, datetime.now(UTC).isoformat()),
+                (key, normalized, _DETERMINISTIC_CREATED),
             )
         return json.loads(normalized)

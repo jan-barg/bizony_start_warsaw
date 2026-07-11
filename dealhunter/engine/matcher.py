@@ -136,7 +136,7 @@ def normalize_text(value: str) -> str:
     return " ".join("".join(chars).split())
 
 
-def _compact(value: str) -> str:
+def normalize_style_code(value: str) -> str:
     return "".join(char for char in unicodedata.normalize("NFKC", value).upper() if char.isalnum())
 
 
@@ -155,8 +155,8 @@ def _detected_brands(text: str, world: World) -> set[str]:
 
 
 def _model_present(text: str, product: Product) -> bool:
-    compact_title = _compact(text)
-    compact_model = _compact(normalize_text(product.model))
+    compact_title = normalize_style_code(text)
+    compact_model = normalize_style_code(normalize_text(product.model))
     if compact_model in compact_title:
         return True
     # Generated catalogs sometimes append edition markers; require every word.
@@ -299,11 +299,18 @@ def catalog_candidates(query: str, world: World, reject: int = 60) -> list[Produ
 
 
 def _exact_code_product(title: str, world: World) -> Product | None:
-    compact_title = _compact(title)
-    hits = [product for product in world.products if _compact(product.style_code) in compact_title]
+    compact_title = normalize_style_code(title)
+    hits = [
+        product
+        for product in world.products
+        if normalize_style_code(product.style_code) in compact_title
+    ]
     if not hits:
         return None
-    return sorted(hits, key=lambda product: (-len(_compact(product.style_code)), product.style_code))[0]
+    return sorted(
+        hits,
+        key=lambda product: (-len(normalize_style_code(product.style_code)), product.style_code),
+    )[0]
 
 
 def _result(

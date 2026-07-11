@@ -3,10 +3,9 @@ from __future__ import annotations
 
 import json
 import re
+from dataclasses import dataclass
 from decimal import Decimal
 from typing import Any
-
-from pydantic import BaseModel
 
 from ..core.enums import AskKind
 from ..core.models import RouteQuote
@@ -64,7 +63,8 @@ _NARRATION_SCHEMA: dict[str, Any] = {
 }
 
 
-class AskFactSheet(BaseModel):
+@dataclass(frozen=True)
+class AskFactSheet:
     kind: AskKind
     quote: RouteQuote
     vendor_name: str

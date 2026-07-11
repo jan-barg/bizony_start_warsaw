@@ -2,10 +2,9 @@
 from __future__ import annotations
 
 import re
+from dataclasses import dataclass
 from decimal import Decimal, InvalidOperation
 from typing import Any
-
-from pydantic import BaseModel
 
 from ..core.config import Constants
 from ..core.enums import HuntStatus, IntakeStatus, Mode
@@ -17,7 +16,7 @@ from ..core.models import (
     Mandate,
     World,
 )
-from ..engine.matcher import catalog_candidates
+from ..engine.matcher import catalog_candidates, normalize_style_code
 from .client import IntakeUnavailable, LLMClient, LLMProtocolError
 from .vision import ImageResolutionError, ImageResolver, image_data_url
 
@@ -138,20 +137,22 @@ _INTAKE_SCHEMA: dict[str, Any] = {
 }
 
 
-class IntakeDiffEntry(BaseModel):
+@dataclass(frozen=True)
+class IntakeDiffEntry:
     path: str
-    before: Any = None
-    after: Any = None
+    before: Any
+    after: Any
     sensitive: bool
 
 
-class IntakeState(BaseModel):
+@dataclass(frozen=True)
+class IntakeState:
     session: IntakeSession
     partial_draft: dict[str, Any]
-    diff: list[IntakeDiffEntry] = []
-    hunt: Hunt | None = None
-    image_ref: str | None = None
-    start_tick: int = 0
+    diff: list[IntakeDiffEntry]
+    hunt: Hunt | None
+    image_ref: str | None
+    start_tick: int
 
 
 def _request(transcript: list[str], image_ref: str | None, resolver: ImageResolver | None) -> dict:
@@ -190,17 +191,17 @@ def _provider_draft(response: dict) -> tuple[dict[str, Any], dict[str, str]]:
     return {"brief": dict(brief), "mandate": dict(mandate)}, questions
 
 
-def _compact(value: str) -> str:
-    return "".join(character for character in value.upper() if character.isalnum())
-
-
 def _sanitize_style_code(draft: dict[str, Any], transcript: list[str], world: World) -> None:
     style_code = draft["brief"].get("style_code")
     known = {product.style_code for product in world.products}
-    user_material = _compact(
+    user_material = normalize_style_code(
         " ".join(entry for entry in transcript if not entry.startswith("image:sha256:"))
     )
-    if not isinstance(style_code, str) or style_code not in known or _compact(style_code) not in user_material:
+    if (
+        not isinstance(style_code, str)
+        or style_code not in known
+        or normalize_style_code(style_code) not in user_material
+    ):
         draft["brief"]["style_code"] = None
 
 
