@@ -148,7 +148,7 @@ def _report_markdown(summary: dict[str, object], *, include_plots: bool = True) 
     plot_files = """- `plots/all-runs.svg`: 10×10 contact sheet showing every complete timeline.
 - `plots/timelines/run-001.svg` … `run-100.svg`: readable full timeline for every run.
 - `plots/buy-timing.svg`: paired user-versus-SolidHunt purchase day.
-- `plots/price-gap-comparison.svg`: Tukey box plots with sparse context points and explicit outlier counts.
+- `plots/price-gap-comparison.svg`: box plots with every legitimate purchase shown on a split axis.
 - `plots/price-gap-cdf.svg`: cumulative share of purchases within each price gap.
 - `plots/paired-outcomes.svg`: paired cheaper, tied, and more-expensive outcome counts.
 - `plots/outcomes.svg`: legitimate purchases, invalid purchases, and misses.

@@ -279,7 +279,7 @@ def _quantile(values: list[float], fraction: float) -> float:
 
 
 def write_regret_comparison(path: Path, runs: list[RunEvaluation]) -> None:
-    """Show standard box plots with a sparse, deterministic point sample."""
+    """Show box plots overlaid with every legitimate purchase."""
     series = _regret_series(runs)
     summaries = []
     for label, color, values in series:
@@ -295,10 +295,6 @@ def write_regret_comparison(path: Path, runs: list[RunEvaluation]) -> None:
             (value for value in values if value <= upper_fence),
             default=q3,
         )
-        outliers = [
-            value for value in values
-            if value < lower_whisker or value > upper_whisker
-        ]
         summaries.append((
             label,
             color,
@@ -308,25 +304,43 @@ def write_regret_comparison(path: Path, runs: list[RunEvaluation]) -> None:
             q3,
             lower_whisker,
             upper_whisker,
-            outliers,
         ))
     focus_source = max((row[7] for row in summaries), default=1.0)
     focus_limit = max(5, int(ceil(focus_source / 5)) * 5)
+    all_values = [value for row in summaries for value in row[2]]
+    tail_limit = max(
+        focus_limit + 20,
+        int(ceil(max(all_values, default=focus_limit) / 20)) * 20,
+    )
     width, height = 1200, 580
-    left, top, plot_width = 275, 170, 835
+    left, top = 275, 170
+    main_width = 610
+    tail_left, tail_width = 955, 155
     lane_gap = 145
+
+    def x_position(value: float) -> float:
+        if value <= focus_limit:
+            return left + value / focus_limit * main_width
+        return tail_left + (value - focus_limit) / (tail_limit - focus_limit) * tail_width
+
     lines = _svg_start(
         width,
         height,
         "Price gap from optimal by strategy",
-        "Horizontal Tukey box plots compare legitimate purchase gaps. The boxes and whiskers use every purchase; twelve evenly spaced non-outlier observations provide sparse distribution context.",
+        "Horizontal box plots compare legitimate purchase gaps, with every purchase shown as a dot. A split axis preserves detail in the main distribution while retaining the full tail.",
     )
     lines.append('<text x="42" y="48" class="title">How far was each purchase from the best possible price?</text>')
-    lines.append('<text x="42" y="73" class="subtitle">Box = middle 50% · line = median · whiskers = non-outlier range · all purchases included</text>')
-    for value in range(0, focus_limit + 1, 5):
-        x = left + plot_width * value / focus_limit
+    lines.append(f'<text x="42" y="73" class="subtitle">Box = middle 50% · line = median · every purchase shown · axis breaks after €{focus_limit}</text>')
+    for value in range(0, focus_limit + 1, 10):
+        x = x_position(value)
         lines.append(f'<line x1="{x:.1f}" y1="{top-62}" x2="{x:.1f}" y2="{top+lane_gap+58}" stroke="{BORDER}"/>')
         lines.append(f'<text x="{x:.1f}" y="{top+lane_gap+83}" text-anchor="middle" class="small">€{value}</text>')
+    for value in range(focus_limit + 40, tail_limit + 1, 40):
+        x = x_position(value)
+        lines.append(f'<line x1="{x:.1f}" y1="{top-62}" x2="{x:.1f}" y2="{top+lane_gap+58}" stroke="{BORDER}"/>')
+        lines.append(f'<text x="{x:.1f}" y="{top+lane_gap+83}" text-anchor="middle" class="small">€{value}</text>')
+    break_x = (left + main_width + tail_left) / 2
+    lines.append(f'<path d="M{break_x-9:.1f},{top+lane_gap+70} l7,-12 l7,12 l7,-12" fill="none" stroke="{INK}" stroke-width="2"/>')
     for lane, (
         label,
         color,
@@ -336,31 +350,23 @@ def write_regret_comparison(path: Path, runs: list[RunEvaluation]) -> None:
         q3,
         lower_whisker,
         upper_whisker,
-        outliers,
     ) in enumerate(summaries):
         y = top + lane * lane_gap
         lines.append(f'<text x="{left-24}" y="{y-6}" text-anchor="end" class="label">{escape(label)}</text>')
         lines.append(f'<text x="{left-24}" y="{y+17}" text-anchor="end" class="small">n={len(values)}</text>')
-        non_outliers = [
-            value for value in values
-            if lower_whisker <= value <= upper_whisker
-        ]
-        sample_count = min(12, len(non_outliers))
-        sample_indices = (
-            [round(index * (len(non_outliers) - 1) / (sample_count - 1)) for index in range(sample_count)]
-            if sample_count > 1 else [0] if sample_count else []
-        )
-        for index, sample_index in enumerate(sample_indices):
-            value = non_outliers[sample_index]
-            x = left + value / focus_limit * plot_width
-            dot_y = y - 47 + (index % 2) * 10
+        occurrences: dict[float, int] = {}
+        for index, value in enumerate(values):
+            occurrence = occurrences.get(value, 0)
+            occurrences[value] = occurrence + 1
+            x = x_position(value) + (occurrence // 6) * 1.4
+            dot_y = y - 65 + ((index * 3 + occurrence) % 6) * 7
             stroke = INK if color == ENGINE else PAPER
-            lines.append(f'<circle cx="{x:.1f}" cy="{dot_y:.1f}" r="4" fill="{color}" fill-opacity=".68" stroke="{stroke}" stroke-width=".8"/>')
-        lower_x = left + lower_whisker / focus_limit * plot_width
-        q1_x = left + q1 / focus_limit * plot_width
-        med_x = left + med / focus_limit * plot_width
-        q3_x = left + q3 / focus_limit * plot_width
-        upper_x = left + upper_whisker / focus_limit * plot_width
+            lines.append(f'<circle cx="{x:.1f}" cy="{dot_y:.1f}" r="3.1" fill="{color}" fill-opacity=".55" stroke="{stroke}" stroke-width=".6"/>')
+        lower_x = x_position(lower_whisker)
+        q1_x = x_position(q1)
+        med_x = x_position(med)
+        q3_x = x_position(q3)
+        upper_x = x_position(upper_whisker)
         box_fill = BRAND if color == ENGINE else SOFT
         lines.append(f'<line x1="{lower_x:.1f}" y1="{y}" x2="{upper_x:.1f}" y2="{y}" stroke="{INK}" stroke-width="3"/>')
         lines.append(f'<line x1="{lower_x:.1f}" y1="{y-17}" x2="{lower_x:.1f}" y2="{y+17}" stroke="{INK}" stroke-width="3"/>')
@@ -368,15 +374,10 @@ def write_regret_comparison(path: Path, runs: list[RunEvaluation]) -> None:
         lines.append(f'<rect x="{q1_x:.1f}" y="{y-27}" width="{max(q3_x-q1_x, 1):.1f}" height="54" fill="{box_fill}" stroke="{INK}" stroke-width="2"/>')
         lines.append(f'<line x1="{med_x:.1f}" y1="{y-27}" x2="{med_x:.1f}" y2="{y+27}" stroke="{INK}" stroke-width="5"/>')
         lines.append(f'<text x="{left}" y="{y+53}" class="small">Q1 €{q1:.2f} · median €{med:.2f} · Q3 €{q3:.2f}</text>')
-        outlier_text = (
-            f'{len(outliers)} Tukey outliers · max €{max(outliers):.2f}'
-            if outliers else "0 Tukey outliers"
-        )
-        lines.append(f'<text x="{left+plot_width}" y="{y+53}" text-anchor="end" class="small">{outlier_text}</text>')
     engine_median = summaries[0][4] if summaries else 0.0
     user_median = summaries[1][4] if len(summaries) > 1 else 0.0
     improvement = 100 * (user_median - engine_median) / user_median if user_median else 0.0
-    lines.append(f'<text x="{left+plot_width/2}" y="{height-93}" text-anchor="middle" class="small">12 percentile-spaced non-outlier observations shown per policy; box statistics use the complete legitimate-purchase sample.</text>')
+    lines.append(f'<text x="{(left+tail_left+tail_width)/2:.1f}" y="{height-93}" text-anchor="middle" class="small">Every legitimate purchase is shown; the split axis keeps the central distribution readable without removing the tail.</text>')
     lines.append(f'<rect x="42" y="{height-74}" width="{width-84}" height="50" rx="8" fill="{BRAND}"/>')
     lines.append(f'<text x="64" y="{height-42}" class="metric">SolidHunt median gap is {improvement:.0f}% lower</text>')
     lines.append(f'<text x="{width-64}" y="{height-42}" text-anchor="end" class="label">€{engine_median:.2f} vs €{user_median:.2f}</text>')
@@ -433,7 +434,7 @@ def write_regret_cdf(path: Path, runs: list[RunEvaluation]) -> None:
 
 
 def write_paired_outcomes(path: Path, runs: list[RunEvaluation]) -> None:
-    """Count paired wins, ties, and losses without relying on the outlier-led mean."""
+    """Count paired wins, ties, and losses without relying on the tail-led mean."""
     differences = []
     for run in runs:
         if (

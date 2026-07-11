@@ -170,7 +170,7 @@ The standard-library SVG renderer produces:
 - `all-runs.svg`: a 10×10 contact sheet containing every complete market timeline.
 - `timelines/run-001.svg` through `run-100.svg`: one readable full timeline per seed.
 - `buy-timing.svg`: shopper buy day against SolidHunt buy day for paired purchases.
-- `price-gap-comparison.svg`: horizontal Tukey box plots using all legitimate purchases, with a sparse percentile-spaced point sample and explicit outlier counts/maxima.
+- `price-gap-comparison.svg`: horizontal box plots with every legitimate purchase shown; a split axis preserves detail in the main distribution while retaining the full price tail.
 - `price-gap-cdf.svg`: cumulative share of legitimate purchases within each price gap, which remains readable despite large tail values.
 - `paired-outcomes.svg`: run-by-run counts where SolidHunt was cheaper, tied, or more expensive among paired legitimate purchases.
 - `outcomes.svg`: legitimate purchase, invalid purchase, and miss counts.
