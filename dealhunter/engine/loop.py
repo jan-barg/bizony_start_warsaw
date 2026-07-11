@@ -79,11 +79,7 @@ def run_monitor(hunt: Hunt, world: World, cfg: Constants, llm: LLMClient) -> lis
 
 @_match_memo_scope()
 def run_immediate(hunt: Hunt, world: World, cfg: Constants, llm: LLMClient) -> Receipt:
-    """Run the immediate engine at the hunt's start tick.
-
-    Order cancellation/refund processing belongs to the later lifecycle
-    checkpoint; this slice returns the deterministic primary decision receipt.
-    """
+    """Run one immediate decision, including cancellation retry and settlement."""
     if hunt.mandate.mode != Mode.IMMEDIATE:
         raise ValueError("run_immediate requires an IMMEDIATE mandate")
     tick = hunt.start_tick
