@@ -29,6 +29,7 @@ The Stage-0 matcher fallback is deleted; the real matcher is memoized per hunt/l
 
 ### Person C — api/ui
 **Done:** WO-4 complete + beyond — §8 API + SSE, screens ①–④, hybrid backend (real worlds/dossier/`run_immediate`), coherent fixture story arcs, 3 user-reported bugs fixed (clarify loop convergence, dead navigation, phantom cancellation).
+**In progress:** `origin/personc` adds the new aurora/composer homepage and animations; it still needs a clean rebase/build before merge and does not yet include the real S2 monitor wiring.
 **Remaining:**
 - [ ] **Unblocked NOW: real intake behind `POST /intake`** — swap the regex fake for D's `llm/intake.py` (warm-cache replay; regex parser demoted to `--no-llm` fallback); screenshot intake + real mandate diffs in the UI
 - [ ] Wire D's `narrate.py` into ask/alert cards (replace API-side template strings)
@@ -51,7 +52,7 @@ The Stage-0 matcher fallback is deleted; the real matcher is memoized per hunt/l
 
 ## Order of operations from here
 
-1. Merge `feat/engine-s2` into `develop` and keep V1–V10 green.
+1. ✅ `feat/engine-s2` merged into `develop` at `481c409`; V1–V10 are green.
 2. In parallel: **C wires real intake/narration and SSE → `run_monitor`**; **A builds `evalx`** with the 20-seed S2 run.
 3. **S2 close-out:** delete the fixture replayer, run a browser demo of a fully real monitor hunt, and turn failures from the 20-seed evaluation into the B/D bug queue.
 4. **S3:** Judge View, warm demo cache, 200-seed four-policy evaluation, feature freeze, `demo` tag on `main`, and two rehearsals (`--no-llm` and warmed cache).
