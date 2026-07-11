@@ -215,7 +215,9 @@ def inject_traps(
     for listing in _take(stream, kids_pool, cfg.TRAP_COUNTS.get("gs_kids", 0)):
         product = products_by_id[listing.true_product_id]
         adult = products_by_id[product_id] if (product_id := f"p_{product.is_kids_version_of}") in products_by_id else product
-        listing.raw_title = f"{adult.brand} {adult.model} {adult.colorway_name} size 43 special price"
+        listing.raw_title = (
+            f"{adult.brand} {adult.model} {adult.colorway_name} GS size 43 special price"
+        )
         listing.size_eu = Decimal("43")
         records.append(_record(
             "gs_kids", listing, vendors_by_id[listing.vendor_id], whole_horizon,
