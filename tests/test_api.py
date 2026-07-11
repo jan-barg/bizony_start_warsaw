@@ -292,4 +292,5 @@ class TestMisc:
     def test_config(self, client):
         body = client.get("/config").json()
         assert body["backend"] == "hybrid" and body["tick_ms"] == 300
-        assert "run_immediate" in body["real"] and "monitor_events" in body["fixture"]
+        assert {"run_immediate", "intake", "narration"} <= set(body["real"])
+        assert body["fixture"] == ["monitor_events"]

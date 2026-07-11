@@ -3,9 +3,10 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from decimal import Decimal
+from typing import Literal
 
 from ..core.config import Constants
-from ..core.enums import AccessTier, Carrier, Condition, Currency, GEO_TO_ZONE, Geo, HsCategory, Ruleset, Zone
+from ..core.enums import AccessTier, Carrier, Condition, Currency, GEO_TO_ZONE, Geo, Ruleset, Zone
 from ..core.models import Coupon, GeoPromo, Middleman, OracleAnswer, OracleBest, PriceEvent, Product, Vendor, World
 from ..core.money import q2
 from ..core.rng import rng
@@ -177,7 +178,6 @@ def _templates(world: World, cfg: Constants) -> list[HuntTemplate]:
 def _best(world: World, cfg: Constants, template: HuntTemplate, allow_gray: bool) -> OracleBest | None:
     products = {product.id: product for product in world.products}
     vendors = {vendor.id: vendor for vendor in world.vendors}
-    listings = {listing.id: listing for listing in world.listings}
     events = {(event.listing_id, event.tick): event for event in world.price_events}
     promos_by_listing: dict[str, list[GeoPromo]] = {}
     for promo in world.geo_promos:
@@ -205,7 +205,9 @@ def _best(world: World, cfg: Constants, template: HuntTemplate, allow_gray: bool
             event = events[(listing.id, tick)]
             if event.stock <= 0:
                 continue
-            route_inputs: list[tuple[Decimal, AccessTier, str, Middleman | None, int]] = []
+            route_inputs: list[
+                tuple[Decimal, AccessTier, Literal["direct", "middleman"], Middleman | None, int]
+            ] = []
             if Geo.PL in vendor.ships_to:
                 eta = cfg.ETA_DIRECT[GEO_TO_ZONE[vendor.geo]]
                 route_inputs.append((event.sticker, AccessTier.BASE, "direct", None, eta))
@@ -222,20 +224,39 @@ def _best(world: World, cfg: Constants, template: HuntTemplate, allow_gray: bool
                 for middleman in lane_middlemen:
                     route_inputs.append((promo.promo_sticker, promo.access_tier, "middleman", middleman, cfg.ETA_DOMESTIC_LEG + middleman.extra_ticks))
 
-            for sticker, _tier, kind, middleman, eta in route_inputs:
+            for sticker, _tier, kind, route_middleman, eta in route_inputs:
                 if template.deadline_tick is not None and tick + eta > template.deadline_tick:
                     continue
-                total = _landed(world, cfg, listing.id, event, vendor, product, sticker, kind, middleman)
+                total = _landed(
+                    world,
+                    cfg,
+                    listing.id,
+                    event,
+                    vendor,
+                    product,
+                    sticker,
+                    kind,
+                    route_middleman,
+                )
                 if total > template.cap_eur:
                     continue
                 answer = OracleBest(
                     tick=tick,
                     listing_id=listing.id,
                     route_kind=kind,
-                    middleman_id=middleman.id if middleman else None,
+                    middleman_id=route_middleman.id if route_middleman else None,
                     landed_eur=total,
                 )
-                candidates.append((total, tick, listing.id, kind, middleman.id if middleman else "", answer))
+                candidates.append(
+                    (
+                        total,
+                        tick,
+                        listing.id,
+                        kind,
+                        route_middleman.id if route_middleman else "",
+                        answer,
+                    )
+                )
     return min(candidates, key=lambda row: row[:-1])[-1] if candidates else None
 
 

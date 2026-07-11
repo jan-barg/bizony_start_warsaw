@@ -72,7 +72,7 @@ Live OpenAI / cache gate (fresh human approval on 2026-07-11):
 - Replay with sockets blocked → two normalized output runs byte-identical.
 - Independently rebuilt cache from replay → SQLite files byte-identical. `created` is deterministic `1970-01-01T00:00:00+00:00`; no wall-clock reads.
 
-Read-only overlay on `origin/develop` (no merge/rebase):
+Historical read-only overlay on pre-fix `origin/develop` (no merge/rebase):
 
 - Full non-integration suite → 207 passed, 2 deselected, 1 incoming xfailed.
 - Alert-only policy matrix → 4/4 passed: `COLORWAY_CONFLICT`, `COLORWAY_UNCONFIRMED`, `LLM_MATCH_ONLY`, and `SIZE_AMBIGUOUS` never purchase.
@@ -81,18 +81,20 @@ Read-only overlay on `origin/develop` (no merge/rebase):
 
 ## Cross-branch findings
 
-- Local branch files still contain Person A/B stubs because the new work is only on `origin/develop`; no branch sync was authorized. Compatibility was tested through a `/private/tmp` overlay.
-- The ≥95% generated-world target is not met. Generator `_messy_title` intentionally removes colorway from 20% of normal titles, frequently among duplicate brand/model variants; choosing the true style code is then impossible from matcher inputs. Runtime deliberately does not exploit style codes leaked by generated `image_url` filenames. Sanctioned fail-closed result: 88.4679%, measured honestly.
-- Generated `gs_kids` traps replace the kids title with the adult brand/model/colorway and bare EU 43, with no kids marker or other matcher-visible evidence. Flagging them would require a trap-specific heuristic or hidden truth. Generator/policy contract needs correction.
+- The historical overlay exposed insufficient matcher-visible evidence in generated titles and `gs_kids` traps. The generator contract was corrected before PR #1 merged; runtime still does not inspect hidden truth or image filename leaks.
+- Current synchronized seeds 1–5 result: 1,177/1,214 non-trap identities correct (**96.952224%**) and zero unflagged matcher traps. The ≥95% M4 gate is green.
 - All four alert-only flags pass the incoming immediate policy integration. Matcher memoization is still absent from incoming `evaluate_tick`; Person B owns `(hunt.id, listing.id)` caching.
 - Person C still owns API image decode/validation, in-memory digest map, and clarify response transport.
 
 ## Integration obligations
 
-1. Sync `origin/develop` only with explicit branch-change consent, then resolve the generator/matcher observability contract above.
-2. Add Person B matcher memoization; policy safety already has a four-flag integration gate.
-3. Preserve the committed reviewed cache as a versioned replay input; any future rewarm requires new human approval.
-4. Run the full offline gate twice from the committed cache; verify missing keys raise `LLMCacheMiss`.
+`WORK-ORDER-STATUS.md` is the canonical remaining-work checklist; this report
+records evidence and retains explicitly labeled historical snapshots.
+
+1. **Complete:** synchronized `origin/develop` under explicit consent; the generator/matcher observability contract now passes at 96.952224% with zero missed traps.
+2. **Pending B:** add run-scoped matcher memoization; policy safety already has a four-flag integration gate.
+3. **Pending S3:** preserve the committed reviewed cache until a validated seed-42 candidate replaces it; any live rewarm requires fresh human approval immediately beforehand.
+4. **Pending final gate:** run the full offline path twice from the committed cache and verify missing keys raise `LLMCacheMiss`.
 
 ## Exact acceptance commands
 
@@ -105,3 +107,54 @@ pytest -m integration tests/test_matcher_integration.py -q
 rg -n 'is_bait|is_counterfeit|true_product_id|p_cancel\b' dealhunter/engine
 rg -n 'world\.dossier' dealhunter/engine dealhunter/llm
 ```
+
+## Post-merge completion audit
+
+Audit date: 2026-07-11. Integration base: `origin/develop` at `481c409`.
+
+| Requirement | Evidence | Status |
+|---|---|---|
+| WO-3 task 1 — deterministic tiers 1–2 | `tests/test_matcher.py`; 57 focused matcher tests | complete |
+| WO-3 task 2 — fuzzy tier 3 and accuracy | `tests/test_matcher_integration.py`; current seeds 1–5: 1,177/1,214 (**96.952224%**), zero missed traps | complete |
+| WO-3 task 3 — OpenAI/Null clients and strict cache | `tests/test_llm_client.py`, `tests/test_llm_offline.py`; live manifest proof above | complete |
+| WO-3 task 4 — intake, clarify, vision, diff | `tests/test_llm_intake.py`; digest-only transcript and sensitive diff cases | complete |
+| WO-3 task 5 — veto-only adjudication | `tests/test_llm_adjudicate.py`; outside-list/refusal/Null abstention | complete |
+| WO-3 task 6 — placeholder-safe narration | `tests/test_llm_narrate.py`; hostile-name, digit, placeholder, imperative fallbacks | complete |
+| WO-3 task 7 — final demo cache | Current reviewed 8-row artifact is valid; exact seed-42 S3 demo requests are not frozen | blocked by final demo script |
+| S2 monitor memoization | Context-local `(hunt.id, listing.id)` cache; 6 matcher integration tests, 21 combined focused tests, and V10 pass | complete |
+| S3 intake/narration API/UI wiring | D modules are ready; `api/app.py` still uses regex intake and fixed narration | blocked by C integration |
+| Full integrated static gate | Person B/D-owned paths are green | blocked by A/C failures listed in `WORK-ORDER-STATUS.md` |
+| Offline/browser rehearsal | Real monitor is available and module replay is deterministic; API/UI still use fixtures | blocked by C integration |
+
+### S2 handoff finding
+
+Person B's merged S2 engine removed the Stage-0 fallback and added matcher reuse
+across ticks, but the first implementation stored results in a module-global
+cache. D's regression reproduced cross-run leakage with the same deterministic
+hunt ID. Commit `c9a81fc` replaced the cache with a context-local execution
+scope keyed exactly by `(hunt.id, listing.id)`. The first and second executions
+now each call the matcher once per listing; V10 remains byte-identical.
+
+Person D is **not yet complete** under the post-merge checklist. WO-3 tasks 1–6
+are complete; task 7 and the S2/S3 cross-person acceptance gates remain blocked
+and must not be checked off without passing evidence.
+
+### Post-merge execution log
+
+- Repeated `git fetch origin` detected B's merge at `481c409`; it was merged into `feat/matcher-llm` as `e7ce513` with the status-board conflict resolved from both intents.
+- Person C's latest fetched work remains on `origin/personc` at `895f7c2` and does not wire LLM intake/narration.
+- Full default `pytest -q`: 238 passed, 0 xfailed. Person B/D-focused Ruff and mypy gates are green.
+- Full Ruff remains red with 6 pre-existing A/C-owned findings; full mypy remains red with 12 pre-existing A/C-owned findings. Exact ownership is recorded in `WORK-ORDER-STATUS.md`.
+- Extended matcher integration: 5 passed, 1 failed on the run-scoped memo contract against the real monitor.
+- Current generated-world proof: 1,177/1,214 non-trap identities correct (96.952224%), zero missed matcher traps.
+- No new live OpenAI call was made: the existing reviewed manifest/cache is already proven, while the exact seed-42 final-demo request set is not yet frozen. Human approval for necessary final calls is available but must be reconfirmed immediately before warming.
+
+Local post-merge commits (not pushed):
+
+- `89cf40f` — `docs(llm): define post-merge completion gates`
+- `bd905e3` — `test(matcher): require run-scoped monitor memo`
+- `39267d0` — `docs(llm): correct post-merge audit evidence`
+- `a674258` — `docs(llm): reconcile final S3 obligations`
+- `08977f6` — `docs(llm): record post-merge integration proof`
+- `e7ce513` — `merge: integrate S2 engine into matcher branch`
+- `c9a81fc` — `fix(matcher): scope monitor memo per execution`

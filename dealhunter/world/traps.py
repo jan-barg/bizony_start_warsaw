@@ -5,7 +5,7 @@ from collections import defaultdict
 from decimal import Decimal
 
 from ..core.config import Constants
-from ..core.enums import AccessTier, Condition, Currency, Geo
+from ..core.enums import AccessTier, Currency, Geo
 from ..core.ids import coupon_id, geo_promo_id
 from ..core.models import (
     ColorwayAlias,
