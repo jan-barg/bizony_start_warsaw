@@ -1,11 +1,9 @@
 """Deterministic intake sufficiency, vision resolution, clarification, and diff."""
 from __future__ import annotations
 
-import base64
-import hashlib
 import re
 from decimal import Decimal, InvalidOperation
-from typing import Any, Protocol
+from typing import Any
 
 from pydantic import BaseModel
 
@@ -21,9 +19,18 @@ from ..core.models import (
 )
 from ..engine.matcher import catalog_candidates
 from .client import IntakeUnavailable, LLMClient, LLMProtocolError
+from .vision import ImageResolutionError, ImageResolver, image_data_url
+
+__all__ = [
+    "ImageResolutionError",
+    "ImageResolver",
+    "IntakeDiffEntry",
+    "IntakeState",
+    "clarify_intake",
+    "start_intake",
+]
 
 
-_IMAGE_REFERENCE = re.compile(r"^image:sha256:([0-9a-f]{64})$")
 _MISSING_PRIORITY = ("product_query", "size_eu", "cap_landed_eur", "need_within_ticks", "mode")
 _SENSITIVE_PREFIXES = (
     "brief.product_query",
@@ -57,16 +64,6 @@ _INTAKE_SCHEMA: dict[str, Any] = {
 }
 
 
-class ImageResolver(Protocol):
-    def resolve(self, reference: str) -> bytes:
-        """Return API-owned validated bytes for a digest reference."""
-        ...
-
-
-class ImageResolutionError(ValueError):
-    pass
-
-
 class IntakeDiffEntry(BaseModel):
     path: str
     before: Any = None
@@ -83,33 +80,6 @@ class IntakeState(BaseModel):
     start_tick: int = 0
 
 
-def _image_bytes(reference: str, resolver: ImageResolver | None) -> bytes:
-    match = _IMAGE_REFERENCE.fullmatch(reference)
-    if match is None:
-        raise ImageResolutionError("malformed image reference")
-    if resolver is None:
-        raise ImageResolutionError("image resolver is required")
-    try:
-        data = resolver.resolve(reference)
-    except (KeyError, LookupError) as error:
-        raise ImageResolutionError("image reference not found") from error
-    if not isinstance(data, bytes) or not data:
-        raise ImageResolutionError("image resolver returned no bytes")
-    if hashlib.sha256(data).hexdigest() != match.group(1):
-        raise ImageResolutionError("image digest mismatch")
-    return data
-
-
-def _mime_type(data: bytes) -> str:
-    if data.startswith(b"\x89PNG\r\n\x1a\n"):
-        return "image/png"
-    if data.startswith(b"\xff\xd8\xff"):
-        return "image/jpeg"
-    if data.startswith((b"GIF87a", b"GIF89a")):
-        return "image/gif"
-    return "application/octet-stream"
-
-
 def _request(transcript: list[str], image_ref: str | None, resolver: ImageResolver | None) -> dict:
     text_turns = [entry for entry in transcript if not entry.startswith("image:sha256:")]
     labeled = "\n".join(
@@ -118,11 +88,7 @@ def _request(transcript: list[str], image_ref: str | None, resolver: ImageResolv
     )
     content: list[dict[str, str]] = [{"type": "input_text", "text": labeled}]
     if image_ref is not None:
-        data = _image_bytes(image_ref, resolver)
-        encoded = base64.b64encode(data).decode()
-        content.append(
-            {"type": "input_image", "image_url": f"data:{_mime_type(data)};base64,{encoded}"}
-        )
+        content.append({"type": "input_image", "image_url": image_data_url(image_ref, resolver)})
     return {
         "surface": "intake",
         "schema": _INTAKE_SCHEMA,

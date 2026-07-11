@@ -11,6 +11,7 @@ from rapidfuzz.fuzz import token_set_ratio
 from ..core.config import Constants
 from ..core.enums import Condition, MatchFlag
 from ..core.models import Brief, Listing, MatchResult, Product, World
+from ..llm.adjudicate import adjudicate
 from ..llm.client import LLMClient
 
 
@@ -321,7 +322,6 @@ def _result(
 
 def match(listing: Listing, brief: Brief, world: World, llm: LLMClient) -> MatchResult:
     """Resolve observable listing evidence without reading generator truth labels."""
-    del llm  # Tier 4 is wired by the bounded adjudication module in the next slice.
     cfg = Constants()
     text = normalize_text(listing.raw_title)
     flags = _safety_flags(listing, brief)
@@ -371,4 +371,17 @@ def match(listing: Listing, brief: Brief, world: World, llm: LLMClient) -> Match
         return _result(top.product, top.score / 100.0, flags, confirmed)
 
     flags.add(MatchFlag.NAME_NEAR_MISS)
+    top_three = [item.product for item in ranked[:3]]
+    image_ref = listing.image_url if listing.image_url.startswith("image:sha256:") else None
+    choice = adjudicate(
+        listing.raw_title,
+        top_three,
+        llm,
+        image_ref=image_ref,
+        image_resolver=getattr(llm, "image_resolver", None),
+    )
+    if choice is not None:
+        chosen = next(item for item in ranked[:3] if item.product.style_code == choice)
+        flags.add(MatchFlag.LLM_MATCH_ONLY)
+        return _result(chosen.product, chosen.score / 100.0, flags, False)
     return MatchResult(flags=sorted(flags, key=lambda flag: flag.value))
