@@ -13,6 +13,7 @@ SolidHunt is an agentic shopping assistant that watches a simulated market, comp
 - [Build plan](build-plan.md) — human overview: phases, branches, sync points
 - [Agent build orders](agent-build-orders.md) — **work orders for LLM build agents**, one self-contained brief per branch
 - [Brand guidelines](BRAND_GUIDELINES.md)
+- [Engine modeling](docs/engine-modeling.md) — implemented mathematics, planned stopping model, evaluation, and honest limitations
 
 ## Quickstart
 
