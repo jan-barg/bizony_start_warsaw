@@ -1,13 +1,17 @@
 from __future__ import annotations
 
-from dealhunter.core.config import Constants
-from dealhunter.core.enums import MatchFlag
-from dealhunter.core.models import Brief
-from dealhunter.engine.matcher import match
-from dealhunter.llm.client import NullClient
-from dealhunter.world.generate import generate_world
+from decimal import Decimal
+from pathlib import Path
 
 import pytest
+
+from dealhunter.core.config import Constants
+from dealhunter.core.enums import Action, HuntStatus, MatchFlag, Mode
+from dealhunter.core.models import Brief, Hunt, Mandate, MatchResult, World
+from dealhunter.engine.matcher import match
+from dealhunter.engine.policy import evaluate_tick
+from dealhunter.llm.client import NullClient
+from dealhunter.world.generate import generate_world
 
 
 @pytest.mark.integration
@@ -52,3 +56,49 @@ def test_generated_worlds_meet_identity_and_matcher_trap_gate() -> None:
     assert accuracy >= 0.95 and not unflagged_traps, (
         f"accuracy={accuracy:.4%}; unflagged_traps={unflagged_traps}"
     )
+
+
+@pytest.mark.integration
+@pytest.mark.parametrize(
+    "flag",
+    [
+        MatchFlag.COLORWAY_CONFLICT,
+        MatchFlag.COLORWAY_UNCONFIRMED,
+        MatchFlag.LLM_MATCH_ONLY,
+        MatchFlag.SIZE_AMBIGUOUS,
+    ],
+)
+def test_every_alert_only_match_flag_blocks_policy_purchase(
+    monkeypatch: pytest.MonkeyPatch, flag: MatchFlag
+) -> None:
+    root = Path(__file__).resolve().parent.parent
+    world = World.model_validate_json((root / "fixtures" / "mini_world.json").read_text())
+    hunt = Hunt(
+        id="h_matcher_safety",
+        brief=Brief(
+            product_query="Nike Dunk Low",
+            colorway="Panda",
+            style_code="DD1391-100",
+            size_eu=Decimal("43"),
+        ),
+        mandate=Mandate(
+            mode=Mode.IMMEDIATE,
+            cap_landed_eur=Decimal("150"),
+            expires_tick=10,
+        ),
+        status=HuntStatus.RUNNING,
+        start_tick=0,
+    )
+
+    def flagged_match(*args: object, **kwargs: object) -> MatchResult:
+        return MatchResult(
+            style_code="DD1391-100",
+            colorway_confirmed=False,
+            confidence=0.95,
+            flags=[flag],
+        )
+
+    monkeypatch.setattr("dealhunter.engine.policy.match", flagged_match)
+    receipt = evaluate_tick(hunt, 0, world, Constants(), NullClient())
+    assert receipt.action == Action.ESCALATE_NONE_FOUND
+    assert all(not item.purchase_eligible for item in receipt.considered)
