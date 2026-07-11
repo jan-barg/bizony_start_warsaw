@@ -22,7 +22,7 @@ _PLACEHOLDERS = frozenset(
         "landed",
         "listing_title",
         "overage",
-        "p_cancel",
+        "cancellation_risk",
         "route",
         "vendor_name",
     }
@@ -96,7 +96,7 @@ def _values(facts: AskFactSheet) -> dict[str, str]:
         "eta": f"{quote.eta_ticks} ticks",
         "route": route,
         "items": items,
-        "p_cancel": f"{quote.p_cancel_est * 100:.0f}%",
+        "cancellation_risk": f"{quote.p_cancel_est * 100:.0f}%",
         "comparison": _money(facts.comparison_landed_eur),
         "cap": _money(facts.cap_landed_eur),
         "overage": _money(overage),
@@ -113,7 +113,15 @@ def _quoted(value: str) -> str:
 
 def _fallback(facts: AskFactSheet, values: dict[str, str]) -> str:
     heading = "Gray-route facts." if facts.kind == AskKind.GRAY_ROUTE else "Over-cap facts."
-    keys = ["vendor_name", "listing_title", "landed", "eta", "route", "items", "p_cancel"]
+    keys = [
+        "vendor_name",
+        "listing_title",
+        "landed",
+        "eta",
+        "route",
+        "items",
+        "cancellation_risk",
+    ]
     if facts.comparison_landed_eur is not None:
         keys.append("comparison")
     if facts.kind == AskKind.OVER_CAP:
@@ -174,7 +182,7 @@ def narrate_ask(facts: AskFactSheet, llm: LLMClient) -> str:
             "eta",
             "route",
             "items",
-            "p_cancel",
+            "cancellation_risk",
             "comparison",
         )
         if name not in used and (name != "comparison" or facts.comparison_landed_eur is not None)
