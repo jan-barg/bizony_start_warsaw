@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" width="1280" height="360" viewBox="0 0 1280 360" role="img" aria-labelledby="title desc">
+  <title id="title">SolidHunt verified search logo</title>
+  <desc id="desc">A bright green square with a black search lens and check mark, followed by the SolidHunt wordmark.</desc>
+  <rect x="48" y="60" width="240" height="240" fill="#43F27E"/>
+  <circle cx="155" cy="164" r="62" fill="none" stroke="#080808" stroke-width="25"/>
+  <path d="M198 208L244 254" fill="none" stroke="#080808" stroke-width="29" stroke-linecap="square"/>
+  <path d="M122 164L146 188L190 137" fill="none" stroke="#080808" stroke-width="20" stroke-linecap="square" stroke-linejoin="miter"/>
+  <text x="340" y="231" fill="#080808" font-family="Inter, Arial, Helvetica, sans-serif" font-size="152" font-weight="500" letter-spacing="-8">
+    <tspan>solid</tspan><tspan font-weight="750">hunt</tspan>
+  </text>
+</svg>
