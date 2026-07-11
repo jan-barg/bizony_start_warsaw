@@ -18,9 +18,10 @@ from ..core.models import Hunt, Receipt, World
 from ..llm.client import LLMClient
 from .invariants import assert_order_invariants
 from .ledger import place_order, process_refunds, settle_outstanding_refunds
-from .policy import evaluate_tick
+from .policy import _match_memo_scope, evaluate_tick
 
 
+@_match_memo_scope()
 def run_monitor(hunt: Hunt, world: World, cfg: Constants, llm: LLMClient) -> list[Receipt]:
     if hunt.mandate.mode != Mode.MONITOR:
         raise ValueError("run_monitor requires a MONITOR mandate")
@@ -76,6 +77,7 @@ def run_monitor(hunt: Hunt, world: World, cfg: Constants, llm: LLMClient) -> lis
     return receipts
 
 
+@_match_memo_scope()
 def run_immediate(hunt: Hunt, world: World, cfg: Constants, llm: LLMClient) -> Receipt:
     """Run the immediate engine at the hunt's start tick.
 

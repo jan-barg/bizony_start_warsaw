@@ -12,6 +12,9 @@ Normative reminders:
 """
 from __future__ import annotations
 
+from collections.abc import Iterator
+from contextlib import contextmanager
+from contextvars import ContextVar
 from decimal import Decimal
 
 from ..core.config import Constants
@@ -34,7 +37,6 @@ from ..core.models import (
     MatchResult,
     Receipt,
     World,
-    canonical_json,
     quote_hash,
 )
 from ..llm.client import LLMClient
@@ -52,7 +54,19 @@ from .alerts import (
 from .stopping import deal_percentile, final_buy_tick, p_better, stopping_decision
 
 
-_MATCH_MEMO: dict[tuple[int, int, str, str, str, str], MatchResult] = {}
+_MATCH_MEMO: ContextVar[dict[tuple[str, str], MatchResult] | None] = ContextVar(
+    "match_memo", default=None
+)
+
+
+@contextmanager
+def _match_memo_scope() -> Iterator[None]:
+    """Keep static-title matcher results inside one engine execution."""
+    token = _MATCH_MEMO.set({})
+    try:
+        yield
+    finally:
+        _MATCH_MEMO.reset(token)
 
 
 def _one(items, predicate, description: str):
@@ -64,17 +78,13 @@ def _one(items, predicate, description: str):
 
 def _match_listing(listing, hunt: Hunt, world: World, llm: LLMClient) -> MatchResult:
     """Memoize D's static-title matcher once per hunt and listing."""
-    key = (
-        id(match),
-        world.seed,
-        hunt.id,
-        listing.id,
-        canonical_json(hunt.brief),
-        type(llm).__qualname__,
-    )
-    if key not in _MATCH_MEMO:
-        _MATCH_MEMO[key] = match(listing, hunt.brief, world, llm)
-    return _MATCH_MEMO[key]
+    memo = _MATCH_MEMO.get()
+    if memo is None:
+        return match(listing, hunt.brief, world, llm)
+    key = (hunt.id, listing.id)
+    if key not in memo:
+        memo[key] = match(listing, hunt.brief, world, llm)
+    return memo[key]
 
 
 def _evaluation_sort_key(evaluation: Evaluation):

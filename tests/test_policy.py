@@ -23,6 +23,7 @@ from dealhunter.core.models import (
     World,
     canonical_json,
 )
+from dealhunter.engine.loop import run_monitor
 from dealhunter.engine.policy import evaluate_tick
 from dealhunter.engine.alerts import approve_pending_ask
 from dealhunter.llm.client import NullClient
@@ -268,10 +269,8 @@ def test_matcher_is_memoized_per_hunt_and_listing(monkeypatch):
 
     monkeypatch.setattr("dealhunter.engine.policy.match", counted)
     current = monitor_hunt(expires=3)
-    evaluate_tick(current, 0, world(), CFG, NullClient())
-    first_tick_calls = calls
-    evaluate_tick(current, 1, world(), CFG, NullClient())
-    assert calls == first_tick_calls
+    run_monitor(current, world(), CFG, NullClient())
+    assert calls == len(world().listings)
 
 
 def test_monitor_warmup_alerts_then_holds_with_stopping_evidence():
