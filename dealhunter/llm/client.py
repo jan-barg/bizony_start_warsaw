@@ -1,5 +1,5 @@
 """LLM client protocol + NullClient — WORKING contract (spec §7.3).
-Owner: feat/matcher-llm extends this (AnthropicClient, cache); the protocol and
+Owner: feat/matcher-llm extends this (OpenAIClient, cache); the protocol and
 NullClient semantics are frozen at Stage 0 so every branch can run --no-llm.
 """
 from __future__ import annotations

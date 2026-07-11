@@ -10,6 +10,7 @@ from __future__ import annotations
 import dataclasses
 from dataclasses import dataclass, field
 from decimal import Decimal
+from pathlib import Path
 
 from .enums import HsCategory, Ruleset, Zone
 
@@ -102,6 +103,12 @@ class Constants:
     # --- intake (§7.1) ---
     INTAKE_MAX_CANDIDATES: int = 8
     INTAKE_MAX_QUESTIONS: int = 3
+
+    # --- LLM (§7.3) ---
+    LLM_MODEL_PIN: str = "gpt-5.6-terra"
+    LLM_CACHE_PATH: Path = Path("fixtures/llm_cache.sqlite")
+    LLM_REASONING_EFFORT: str = "low"
+    LLM_MAX_OUTPUT_TOKENS: int = 2048
 
     # --- matcher (§5.1) ---
     FUZZY_ACCEPT: int = 90

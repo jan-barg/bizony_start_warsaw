@@ -30,7 +30,7 @@ Three rules that override everything else in a conflict:
 | API | FastAPI + SSE (`sse-starlette`) | Typed endpoints; server-push for tick streams without WebSocket ceremony |
 | Frontend | SvelteKit (SPA mode) | Team fluency; timeline UI |
 | Fuzzy matching | `rapidfuzz` | Fast token_set_ratio, no native build pain |
-| LLM | Anthropic API via a thin `LLMClient` interface | Swappable; disk-cached (§7.3) |
+| LLM | OpenAI Responses API via a thin `LLMClient` interface | Swappable; disk-cached (§7.3) |
 | Tests | `pytest` | Golden vectors in §11 are the acceptance suite |
 
 ```
@@ -63,7 +63,7 @@ dealhunter/
 │   ├── ledger.py         # append-only receipts (JSONL)
 │   └── loop.py           # tick loop, hunt state machine (§6)
 ├── llm/
-│   ├── client.py         # LLMClient protocol + Anthropic impl + NullClient
+│   ├── client.py         # LLMClient protocol + OpenAI impl + NullClient
 │   ├── cache.py          # sqlite-backed prompt cache (§7.3)
 │   ├── intake.py         # brief+mandate extraction (§7.1)
 │   ├── adjudicate.py     # matcher tier 4 (§7.2)
@@ -771,9 +771,12 @@ Ask-cards and alerts: the engine emits a structured fact sheet (route legs, each
 POST /worlds {seed, config?}            → {world_id, dossier_url, trap_count}
 GET  /worlds/{id}/dossier               → markdown
 POST /intake {world_id, input:{text|image_b64}, mode?} → {intake_id, status: OK|NEEDS_INFO,
-                                           hunt_id?, brief?, mandate?, missing?, questions?}
+                                           hunt_id?, brief?, mandate?, missing?, questions?, diff[]}
 POST /intake/{id}/clarify {text}        → same shape; re-runs intake on accumulated transcript
-                                          (§7.1); on OK, creates the Hunt (DRAFT) + mandate diff
+                                          (§7.1); on OK, creates the Hunt (DRAFT). `diff[]`
+                                          contains sorted server-computed changes across
+                                          `brief.*` and `mandate.*`, each with
+                                          `{path,before,after,sensitive}`.
 PATCH /hunts/{id}/mandate               → edited mandate (pre-confirm only)
 POST /hunts/{id}/confirm                → CONFIRMED
 POST /hunts/{id}/run_immediate          → {action, chosen?, near_misses[], receipt_id}
@@ -874,6 +877,7 @@ FX used in vectors: EURGBP 0.860000, EURUSD 1.100000, EURJPY 165.000000. `q` = q
 | `REASK_IMPROVEMENT` | max(€5, 5%) | ask declines §5.9 |
 | `GOOD_DEAL_MARGIN` | 5.00 | strike_quality §10.3 |
 | `INTAKE_MAX_CANDIDATES` 8 · max questions 3 | intake §7.1 |
+| `LLM_MODEL_PIN` `gpt-5.6-terra` · reasoning `low` · max output 2048 · cache `fixtures/llm_cache.sqlite` | LLM §7.3 |
 | `ALERT_BUDGET` 2 / `ALERT_WINDOW` 7 · dedupe 7 ticks (ONE pool: ALERT + GRAY_ROUTE + OVER_CAP) | interruptions |
 | `FUZZY_ACCEPT` 90 · `FUZZY_REJECT` 60 · margin 5 | matcher |
 | `REFUND_TICKS` | 3 | orders |
