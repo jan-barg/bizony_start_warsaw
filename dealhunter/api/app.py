@@ -13,6 +13,7 @@ from __future__ import annotations
 
 import asyncio
 import json
+import os
 import re
 from decimal import Decimal
 from pathlib import Path
@@ -187,10 +188,13 @@ class FixtureEngine:
         return diff
 
 
-ENGINE = FixtureEngine(
-    llm=CachedClient(None, ROOT / CFG.LLM_CACHE_PATH, CFG.LLM_MODEL_PIN, CacheMode.REPLAY),
-    real_intake=True,
-)
+def _default_llm() -> LLMClient:
+    if os.environ.get("DEALHUNTER_NO_LLM") == "1":
+        return NullClient()
+    return CachedClient(None, ROOT / CFG.LLM_CACHE_PATH, CFG.LLM_MODEL_PIN, CacheMode.REPLAY)
+
+
+ENGINE = FixtureEngine(llm=_default_llm(), real_intake=True)
 
 
 def _real_diff(state: IntakeState) -> list[dict[str, Any]]:
@@ -733,4 +737,5 @@ def config() -> dict[str, Any]:
     return {"tick_ms": CFG.TICK_MS, "horizon": CFG.HORIZON, "backend": "hybrid",
             "real": ["worlds", "dossier", "run_immediate", "intake", "narration"],
             "fixture": ["monitor_events"],
+            "llm_mode": "null" if isinstance(ENGINE.llm, NullClient) else "replay",
             "default_world": DEFAULT_WORLD_ID}
