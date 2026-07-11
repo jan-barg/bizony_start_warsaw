@@ -1,0 +1,1337 @@
+{
+ "aliases": [
+  {
+   "alias": "Panda",
+   "style_code": "DD1391-100"
+  },
+  {
+   "alias": "Lost and Found",
+   "style_code": "DZ5485-612"
+  }
+ ],
+ "coupons": [
+  {
+   "code": "SAMBA5",
+   "excludes_sale": false,
+   "id": "c_l_v001_GW2288_0",
+   "kind": "flat",
+   "min_basket": null,
+   "valid_from": 0,
+   "valid_to": 3,
+   "value": "5.00"
+  },
+  {
+   "code": "PANDA10",
+   "excludes_sale": true,
+   "id": "c_l_v002_DD1391-100_2",
+   "kind": "pct",
+   "min_basket": "50.00",
+   "valid_from": 2,
+   "valid_to": 8,
+   "value": "10"
+  }
+ ],
+ "fx": [
+  {
+   "pair": "EURPLN",
+   "rate": "4.250000",
+   "tick": 0
+  },
+  {
+   "pair": "EURGBP",
+   "rate": "0.860000",
+   "tick": 0
+  },
+  {
+   "pair": "EURUSD",
+   "rate": "1.100000",
+   "tick": 0
+  },
+  {
+   "pair": "EURJPY",
+   "rate": "165.000000",
+   "tick": 0
+  },
+  {
+   "pair": "EURPLN",
+   "rate": "4.250000",
+   "tick": 1
+  },
+  {
+   "pair": "EURGBP",
+   "rate": "0.860000",
+   "tick": 1
+  },
+  {
+   "pair": "EURUSD",
+   "rate": "1.100000",
+   "tick": 1
+  },
+  {
+   "pair": "EURJPY",
+   "rate": "165.000000",
+   "tick": 1
+  },
+  {
+   "pair": "EURPLN",
+   "rate": "4.250000",
+   "tick": 2
+  },
+  {
+   "pair": "EURGBP",
+   "rate": "0.860000",
+   "tick": 2
+  },
+  {
+   "pair": "EURUSD",
+   "rate": "1.100000",
+   "tick": 2
+  },
+  {
+   "pair": "EURJPY",
+   "rate": "165.000000",
+   "tick": 2
+  },
+  {
+   "pair": "EURPLN",
+   "rate": "4.250000",
+   "tick": 3
+  },
+  {
+   "pair": "EURGBP",
+   "rate": "0.860000",
+   "tick": 3
+  },
+  {
+   "pair": "EURUSD",
+   "rate": "1.100000",
+   "tick": 3
+  },
+  {
+   "pair": "EURJPY",
+   "rate": "165.000000",
+   "tick": 3
+  },
+  {
+   "pair": "EURPLN",
+   "rate": "4.250000",
+   "tick": 4
+  },
+  {
+   "pair": "EURGBP",
+   "rate": "0.860000",
+   "tick": 4
+  },
+  {
+   "pair": "EURUSD",
+   "rate": "1.100000",
+   "tick": 4
+  },
+  {
+   "pair": "EURJPY",
+   "rate": "165.000000",
+   "tick": 4
+  },
+  {
+   "pair": "EURPLN",
+   "rate": "4.250000",
+   "tick": 5
+  },
+  {
+   "pair": "EURGBP",
+   "rate": "0.860000",
+   "tick": 5
+  },
+  {
+   "pair": "EURUSD",
+   "rate": "1.100000",
+   "tick": 5
+  },
+  {
+   "pair": "EURJPY",
+   "rate": "165.000000",
+   "tick": 5
+  },
+  {
+   "pair": "EURPLN",
+   "rate": "4.250000",
+   "tick": 6
+  },
+  {
+   "pair": "EURGBP",
+   "rate": "0.860000",
+   "tick": 6
+  },
+  {
+   "pair": "EURUSD",
+   "rate": "1.100000",
+   "tick": 6
+  },
+  {
+   "pair": "EURJPY",
+   "rate": "165.000000",
+   "tick": 6
+  },
+  {
+   "pair": "EURPLN",
+   "rate": "4.250000",
+   "tick": 7
+  },
+  {
+   "pair": "EURGBP",
+   "rate": "0.860000",
+   "tick": 7
+  },
+  {
+   "pair": "EURUSD",
+   "rate": "1.100000",
+   "tick": 7
+  },
+  {
+   "pair": "EURJPY",
+   "rate": "165.000000",
+   "tick": 7
+  },
+  {
+   "pair": "EURPLN",
+   "rate": "4.250000",
+   "tick": 8
+  },
+  {
+   "pair": "EURGBP",
+   "rate": "0.860000",
+   "tick": 8
+  },
+  {
+   "pair": "EURUSD",
+   "rate": "1.100000",
+   "tick": 8
+  },
+  {
+   "pair": "EURJPY",
+   "rate": "165.000000",
+   "tick": 8
+  },
+  {
+   "pair": "EURPLN",
+   "rate": "4.250000",
+   "tick": 9
+  },
+  {
+   "pair": "EURGBP",
+   "rate": "0.860000",
+   "tick": 9
+  },
+  {
+   "pair": "EURUSD",
+   "rate": "1.100000",
+   "tick": 9
+  },
+  {
+   "pair": "EURJPY",
+   "rate": "165.000000",
+   "tick": 9
+  }
+ ],
+ "geo_promos": [
+  {
+   "access_tier": "STOREFRONT",
+   "from_tick": 0,
+   "id": "g_l_v004_DD1391-100_JP",
+   "listing_id": "l_v004_DD1391-100",
+   "p_cancel": null,
+   "promo_sticker": "9900",
+   "to_tick": 9,
+   "viewer_geo": "JP"
+  }
+ ],
+ "horizon": 10,
+ "listings": [
+  {
+   "condition": "NEW",
+   "id": "l_v001_GW2288",
+   "image_url": "fixtures/img/gw2288.jpg",
+   "is_bait": false,
+   "is_counterfeit": false,
+   "raw_title": "adidas Samba OG Cloud White Core Black GW2288 EU 43",
+   "size_eu": "43",
+   "true_product_id": "p_GW2288",
+   "vendor_id": "v_001"
+  },
+  {
+   "condition": "NEW",
+   "id": "l_v001_DD1391-100",
+   "image_url": "fixtures/img/dd1391_official.jpg",
+   "is_bait": false,
+   "is_counterfeit": false,
+   "raw_title": "Nike Dunk Low Retro White Black Panda DD1391-100 EU 43",
+   "size_eu": "43",
+   "true_product_id": "p_DD1391-100",
+   "vendor_id": "v_001"
+  },
+  {
+   "condition": "NEW",
+   "id": "l_v002_DD1391-100",
+   "image_url": "fixtures/img/dd1391_hut.jpg",
+   "is_bait": false,
+   "is_counterfeit": false,
+   "raw_title": "Nike Dunk Low Panda EU 43 brandneu OVP 🔥",
+   "size_eu": "43",
+   "true_product_id": "p_DD1391-100",
+   "vendor_id": "v_002"
+  },
+  {
+   "condition": "NEW",
+   "id": "l_v002_M990GL6",
+   "image_url": "fixtures/img/m990.jpg",
+   "is_bait": false,
+   "is_counterfeit": false,
+   "raw_title": "New Balance 990v6 Black EU 43 top deal",
+   "size_eu": "43",
+   "true_product_id": "p_M990GL6",
+   "vendor_id": "v_002"
+  },
+  {
+   "condition": "NEW",
+   "id": "l_v003_DD1391-100",
+   "image_url": "fixtures/img/dd1391_uk.jpg",
+   "is_bait": false,
+   "is_counterfeit": false,
+   "raw_title": "Nike Dunk Low White/Black DD1391-100 UK 8.5",
+   "size_eu": "43",
+   "true_product_id": "p_DD1391-100",
+   "vendor_id": "v_003"
+  },
+  {
+   "condition": "NEW",
+   "id": "l_v003_DZ5485-612",
+   "image_url": "fixtures/img/aj1.jpg",
+   "is_bait": true,
+   "is_counterfeit": false,
+   "raw_title": "Air Jordan 1 High Lost & Found UK 8.5 CHEAPEST ON THE NET!!",
+   "size_eu": "43",
+   "true_product_id": "p_DZ5485-612",
+   "vendor_id": "v_003"
+  },
+  {
+   "condition": "NEW",
+   "id": "l_v004_DD1391-100",
+   "image_url": "fixtures/img/dd1391_jp.jpg",
+   "is_bait": false,
+   "is_counterfeit": false,
+   "raw_title": "ナイキ ダンク LOW パンダ 27.5cm Dunk Low",
+   "size_eu": "43",
+   "true_product_id": "p_DD1391-100",
+   "vendor_id": "v_004"
+  },
+  {
+   "condition": "NEW",
+   "id": "l_v004_CW1590-100",
+   "image_url": "fixtures/img/dd1391_gs.jpg",
+   "is_bait": false,
+   "is_counterfeit": false,
+   "raw_title": "Nike Dunk Low Panda 38 キッズ",
+   "size_eu": "38",
+   "true_product_id": "p_CW1590-100",
+   "vendor_id": "v_004"
+  }
+ ],
+ "middlemen": [
+  {
+   "extra_ticks": 8,
+   "fee_flat_eur": "3.50",
+   "fee_pct": "0.02",
+   "forwards_to": [
+    "DE",
+    "PL"
+   ],
+   "id": "m_01",
+   "intl_carrier": "POSTAL",
+   "intl_shipping_eur": [
+    [
+     "0.5",
+     "9.00"
+    ],
+    [
+     "1.0",
+     "12.00"
+    ],
+    [
+     "2.0",
+     "14.00"
+    ],
+    [
+     "5.0",
+     "24.00"
+    ]
+   ],
+   "located_in": "JP",
+   "name": "ZenForward"
+  }
+ ],
+ "oracle": {},
+ "price_events": [
+  {
+   "coupon_id": "c_l_v001_GW2288_0",
+   "listing_id": "l_v001_GW2288",
+   "on_sale": false,
+   "sticker": "100.00",
+   "stock": 5,
+   "tick": 0,
+   "was_price_shown": null
+  },
+  {
+   "coupon_id": "c_l_v001_GW2288_0",
+   "listing_id": "l_v001_GW2288",
+   "on_sale": false,
+   "sticker": "100.00",
+   "stock": 5,
+   "tick": 1,
+   "was_price_shown": null
+  },
+  {
+   "coupon_id": "c_l_v001_GW2288_0",
+   "listing_id": "l_v001_GW2288",
+   "on_sale": false,
+   "sticker": "100.00",
+   "stock": 5,
+   "tick": 2,
+   "was_price_shown": null
+  },
+  {
+   "coupon_id": "c_l_v001_GW2288_0",
+   "listing_id": "l_v001_GW2288",
+   "on_sale": false,
+   "sticker": "100.00",
+   "stock": 5,
+   "tick": 3,
+   "was_price_shown": null
+  },
+  {
+   "coupon_id": "c_l_v001_GW2288_0",
+   "listing_id": "l_v001_GW2288",
+   "on_sale": false,
+   "sticker": "100.00",
+   "stock": 5,
+   "tick": 4,
+   "was_price_shown": null
+  },
+  {
+   "coupon_id": "c_l_v001_GW2288_0",
+   "listing_id": "l_v001_GW2288",
+   "on_sale": false,
+   "sticker": "100.00",
+   "stock": 5,
+   "tick": 5,
+   "was_price_shown": null
+  },
+  {
+   "coupon_id": "c_l_v001_GW2288_0",
+   "listing_id": "l_v001_GW2288",
+   "on_sale": false,
+   "sticker": "100.00",
+   "stock": 5,
+   "tick": 6,
+   "was_price_shown": null
+  },
+  {
+   "coupon_id": "c_l_v001_GW2288_0",
+   "listing_id": "l_v001_GW2288",
+   "on_sale": false,
+   "sticker": "100.00",
+   "stock": 5,
+   "tick": 7,
+   "was_price_shown": null
+  },
+  {
+   "coupon_id": "c_l_v001_GW2288_0",
+   "listing_id": "l_v001_GW2288",
+   "on_sale": false,
+   "sticker": "100.00",
+   "stock": 5,
+   "tick": 8,
+   "was_price_shown": null
+  },
+  {
+   "coupon_id": "c_l_v001_GW2288_0",
+   "listing_id": "l_v001_GW2288",
+   "on_sale": false,
+   "sticker": "100.00",
+   "stock": 5,
+   "tick": 9,
+   "was_price_shown": null
+  },
+  {
+   "coupon_id": null,
+   "listing_id": "l_v001_DD1391-100",
+   "on_sale": false,
+   "sticker": "119.00",
+   "stock": 8,
+   "tick": 0,
+   "was_price_shown": null
+  },
+  {
+   "coupon_id": null,
+   "listing_id": "l_v001_DD1391-100",
+   "on_sale": false,
+   "sticker": "119.00",
+   "stock": 8,
+   "tick": 1,
+   "was_price_shown": null
+  },
+  {
+   "coupon_id": null,
+   "listing_id": "l_v001_DD1391-100",
+   "on_sale": false,
+   "sticker": "119.00",
+   "stock": 8,
+   "tick": 2,
+   "was_price_shown": null
+  },
+  {
+   "coupon_id": null,
+   "listing_id": "l_v001_DD1391-100",
+   "on_sale": false,
+   "sticker": "119.00",
+   "stock": 8,
+   "tick": 3,
+   "was_price_shown": null
+  },
+  {
+   "coupon_id": null,
+   "listing_id": "l_v001_DD1391-100",
+   "on_sale": false,
+   "sticker": "119.00",
+   "stock": 8,
+   "tick": 4,
+   "was_price_shown": null
+  },
+  {
+   "coupon_id": null,
+   "listing_id": "l_v001_DD1391-100",
+   "on_sale": false,
+   "sticker": "119.00",
+   "stock": 8,
+   "tick": 5,
+   "was_price_shown": null
+  },
+  {
+   "coupon_id": null,
+   "listing_id": "l_v001_DD1391-100",
+   "on_sale": false,
+   "sticker": "119.00",
+   "stock": 8,
+   "tick": 6,
+   "was_price_shown": null
+  },
+  {
+   "coupon_id": null,
+   "listing_id": "l_v001_DD1391-100",
+   "on_sale": false,
+   "sticker": "119.00",
+   "stock": 8,
+   "tick": 7,
+   "was_price_shown": null
+  },
+  {
+   "coupon_id": null,
+   "listing_id": "l_v001_DD1391-100",
+   "on_sale": false,
+   "sticker": "119.00",
+   "stock": 8,
+   "tick": 8,
+   "was_price_shown": null
+  },
+  {
+   "coupon_id": null,
+   "listing_id": "l_v001_DD1391-100",
+   "on_sale": false,
+   "sticker": "119.00",
+   "stock": 8,
+   "tick": 9,
+   "was_price_shown": null
+  },
+  {
+   "coupon_id": null,
+   "listing_id": "l_v002_DD1391-100",
+   "on_sale": false,
+   "sticker": "105.00",
+   "stock": 4,
+   "tick": 0,
+   "was_price_shown": null
+  },
+  {
+   "coupon_id": null,
+   "listing_id": "l_v002_DD1391-100",
+   "on_sale": false,
+   "sticker": "105.00",
+   "stock": 4,
+   "tick": 1,
+   "was_price_shown": null
+  },
+  {
+   "coupon_id": "c_l_v002_DD1391-100_2",
+   "listing_id": "l_v002_DD1391-100",
+   "on_sale": false,
+   "sticker": "105.00",
+   "stock": 4,
+   "tick": 2,
+   "was_price_shown": null
+  },
+  {
+   "coupon_id": "c_l_v002_DD1391-100_2",
+   "listing_id": "l_v002_DD1391-100",
+   "on_sale": false,
+   "sticker": "105.00",
+   "stock": 4,
+   "tick": 3,
+   "was_price_shown": null
+  },
+  {
+   "coupon_id": "c_l_v002_DD1391-100_2",
+   "listing_id": "l_v002_DD1391-100",
+   "on_sale": false,
+   "sticker": "105.00",
+   "stock": 4,
+   "tick": 4,
+   "was_price_shown": null
+  },
+  {
+   "coupon_id": "c_l_v002_DD1391-100_2",
+   "listing_id": "l_v002_DD1391-100",
+   "on_sale": true,
+   "sticker": "94.90",
+   "stock": 4,
+   "tick": 5,
+   "was_price_shown": "105.00"
+  },
+  {
+   "coupon_id": "c_l_v002_DD1391-100_2",
+   "listing_id": "l_v002_DD1391-100",
+   "on_sale": true,
+   "sticker": "94.90",
+   "stock": 4,
+   "tick": 6,
+   "was_price_shown": "105.00"
+  },
+  {
+   "coupon_id": "c_l_v002_DD1391-100_2",
+   "listing_id": "l_v002_DD1391-100",
+   "on_sale": false,
+   "sticker": "105.00",
+   "stock": 4,
+   "tick": 7,
+   "was_price_shown": null
+  },
+  {
+   "coupon_id": "c_l_v002_DD1391-100_2",
+   "listing_id": "l_v002_DD1391-100",
+   "on_sale": false,
+   "sticker": "105.00",
+   "stock": 4,
+   "tick": 8,
+   "was_price_shown": null
+  },
+  {
+   "coupon_id": null,
+   "listing_id": "l_v002_DD1391-100",
+   "on_sale": false,
+   "sticker": "105.00",
+   "stock": 4,
+   "tick": 9,
+   "was_price_shown": null
+  },
+  {
+   "coupon_id": null,
+   "listing_id": "l_v002_M990GL6",
+   "on_sale": false,
+   "sticker": "185.00",
+   "stock": 3,
+   "tick": 0,
+   "was_price_shown": null
+  },
+  {
+   "coupon_id": null,
+   "listing_id": "l_v002_M990GL6",
+   "on_sale": false,
+   "sticker": "185.00",
+   "stock": 3,
+   "tick": 1,
+   "was_price_shown": null
+  },
+  {
+   "coupon_id": null,
+   "listing_id": "l_v002_M990GL6",
+   "on_sale": false,
+   "sticker": "185.00",
+   "stock": 3,
+   "tick": 2,
+   "was_price_shown": null
+  },
+  {
+   "coupon_id": null,
+   "listing_id": "l_v002_M990GL6",
+   "on_sale": false,
+   "sticker": "185.00",
+   "stock": 3,
+   "tick": 3,
+   "was_price_shown": null
+  },
+  {
+   "coupon_id": null,
+   "listing_id": "l_v002_M990GL6",
+   "on_sale": false,
+   "sticker": "185.00",
+   "stock": 3,
+   "tick": 4,
+   "was_price_shown": null
+  },
+  {
+   "coupon_id": null,
+   "listing_id": "l_v002_M990GL6",
+   "on_sale": false,
+   "sticker": "185.00",
+   "stock": 3,
+   "tick": 5,
+   "was_price_shown": null
+  },
+  {
+   "coupon_id": null,
+   "listing_id": "l_v002_M990GL6",
+   "on_sale": false,
+   "sticker": "185.00",
+   "stock": 3,
+   "tick": 6,
+   "was_price_shown": null
+  },
+  {
+   "coupon_id": null,
+   "listing_id": "l_v002_M990GL6",
+   "on_sale": false,
+   "sticker": "185.00",
+   "stock": 3,
+   "tick": 7,
+   "was_price_shown": null
+  },
+  {
+   "coupon_id": null,
+   "listing_id": "l_v002_M990GL6",
+   "on_sale": false,
+   "sticker": "185.00",
+   "stock": 3,
+   "tick": 8,
+   "was_price_shown": null
+  },
+  {
+   "coupon_id": null,
+   "listing_id": "l_v002_M990GL6",
+   "on_sale": false,
+   "sticker": "185.00",
+   "stock": 3,
+   "tick": 9,
+   "was_price_shown": null
+  },
+  {
+   "coupon_id": null,
+   "listing_id": "l_v003_DD1391-100",
+   "on_sale": false,
+   "sticker": "59.00",
+   "stock": 3,
+   "tick": 0,
+   "was_price_shown": null
+  },
+  {
+   "coupon_id": null,
+   "listing_id": "l_v003_DD1391-100",
+   "on_sale": false,
+   "sticker": "59.00",
+   "stock": 3,
+   "tick": 1,
+   "was_price_shown": null
+  },
+  {
+   "coupon_id": null,
+   "listing_id": "l_v003_DD1391-100",
+   "on_sale": false,
+   "sticker": "59.00",
+   "stock": 3,
+   "tick": 2,
+   "was_price_shown": null
+  },
+  {
+   "coupon_id": null,
+   "listing_id": "l_v003_DD1391-100",
+   "on_sale": false,
+   "sticker": "59.00",
+   "stock": 3,
+   "tick": 3,
+   "was_price_shown": null
+  },
+  {
+   "coupon_id": null,
+   "listing_id": "l_v003_DD1391-100",
+   "on_sale": false,
+   "sticker": "59.00",
+   "stock": 3,
+   "tick": 4,
+   "was_price_shown": null
+  },
+  {
+   "coupon_id": null,
+   "listing_id": "l_v003_DD1391-100",
+   "on_sale": false,
+   "sticker": "59.00",
+   "stock": 3,
+   "tick": 5,
+   "was_price_shown": null
+  },
+  {
+   "coupon_id": null,
+   "listing_id": "l_v003_DD1391-100",
+   "on_sale": false,
+   "sticker": "59.00",
+   "stock": 3,
+   "tick": 6,
+   "was_price_shown": null
+  },
+  {
+   "coupon_id": null,
+   "listing_id": "l_v003_DD1391-100",
+   "on_sale": false,
+   "sticker": "59.00",
+   "stock": 3,
+   "tick": 7,
+   "was_price_shown": null
+  },
+  {
+   "coupon_id": null,
+   "listing_id": "l_v003_DD1391-100",
+   "on_sale": false,
+   "sticker": "59.00",
+   "stock": 3,
+   "tick": 8,
+   "was_price_shown": null
+  },
+  {
+   "coupon_id": null,
+   "listing_id": "l_v003_DD1391-100",
+   "on_sale": false,
+   "sticker": "59.00",
+   "stock": 3,
+   "tick": 9,
+   "was_price_shown": null
+  },
+  {
+   "coupon_id": null,
+   "listing_id": "l_v003_DZ5485-612",
+   "on_sale": false,
+   "sticker": "99.00",
+   "stock": 2,
+   "tick": 0,
+   "was_price_shown": "250.00"
+  },
+  {
+   "coupon_id": null,
+   "listing_id": "l_v003_DZ5485-612",
+   "on_sale": false,
+   "sticker": "99.00",
+   "stock": 2,
+   "tick": 1,
+   "was_price_shown": "250.00"
+  },
+  {
+   "coupon_id": null,
+   "listing_id": "l_v003_DZ5485-612",
+   "on_sale": false,
+   "sticker": "99.00",
+   "stock": 2,
+   "tick": 2,
+   "was_price_shown": "250.00"
+  },
+  {
+   "coupon_id": null,
+   "listing_id": "l_v003_DZ5485-612",
+   "on_sale": false,
+   "sticker": "99.00",
+   "stock": 2,
+   "tick": 3,
+   "was_price_shown": "250.00"
+  },
+  {
+   "coupon_id": null,
+   "listing_id": "l_v003_DZ5485-612",
+   "on_sale": false,
+   "sticker": "99.00",
+   "stock": 2,
+   "tick": 4,
+   "was_price_shown": "250.00"
+  },
+  {
+   "coupon_id": null,
+   "listing_id": "l_v003_DZ5485-612",
+   "on_sale": false,
+   "sticker": "99.00",
+   "stock": 2,
+   "tick": 5,
+   "was_price_shown": "250.00"
+  },
+  {
+   "coupon_id": null,
+   "listing_id": "l_v003_DZ5485-612",
+   "on_sale": false,
+   "sticker": "99.00",
+   "stock": 2,
+   "tick": 6,
+   "was_price_shown": "250.00"
+  },
+  {
+   "coupon_id": null,
+   "listing_id": "l_v003_DZ5485-612",
+   "on_sale": false,
+   "sticker": "99.00",
+   "stock": 2,
+   "tick": 7,
+   "was_price_shown": "250.00"
+  },
+  {
+   "coupon_id": null,
+   "listing_id": "l_v003_DZ5485-612",
+   "on_sale": false,
+   "sticker": "99.00",
+   "stock": 2,
+   "tick": 8,
+   "was_price_shown": "250.00"
+  },
+  {
+   "coupon_id": null,
+   "listing_id": "l_v003_DZ5485-612",
+   "on_sale": false,
+   "sticker": "99.00",
+   "stock": 2,
+   "tick": 9,
+   "was_price_shown": "250.00"
+  },
+  {
+   "coupon_id": null,
+   "listing_id": "l_v004_DD1391-100",
+   "on_sale": false,
+   "sticker": "14800",
+   "stock": 6,
+   "tick": 0,
+   "was_price_shown": null
+  },
+  {
+   "coupon_id": null,
+   "listing_id": "l_v004_DD1391-100",
+   "on_sale": false,
+   "sticker": "14800",
+   "stock": 6,
+   "tick": 1,
+   "was_price_shown": null
+  },
+  {
+   "coupon_id": null,
+   "listing_id": "l_v004_DD1391-100",
+   "on_sale": false,
+   "sticker": "14800",
+   "stock": 6,
+   "tick": 2,
+   "was_price_shown": null
+  },
+  {
+   "coupon_id": null,
+   "listing_id": "l_v004_DD1391-100",
+   "on_sale": false,
+   "sticker": "14800",
+   "stock": 6,
+   "tick": 3,
+   "was_price_shown": null
+  },
+  {
+   "coupon_id": null,
+   "listing_id": "l_v004_DD1391-100",
+   "on_sale": false,
+   "sticker": "14800",
+   "stock": 6,
+   "tick": 4,
+   "was_price_shown": null
+  },
+  {
+   "coupon_id": null,
+   "listing_id": "l_v004_DD1391-100",
+   "on_sale": false,
+   "sticker": "14800",
+   "stock": 6,
+   "tick": 5,
+   "was_price_shown": null
+  },
+  {
+   "coupon_id": null,
+   "listing_id": "l_v004_DD1391-100",
+   "on_sale": false,
+   "sticker": "14800",
+   "stock": 6,
+   "tick": 6,
+   "was_price_shown": null
+  },
+  {
+   "coupon_id": null,
+   "listing_id": "l_v004_DD1391-100",
+   "on_sale": false,
+   "sticker": "14800",
+   "stock": 6,
+   "tick": 7,
+   "was_price_shown": null
+  },
+  {
+   "coupon_id": null,
+   "listing_id": "l_v004_DD1391-100",
+   "on_sale": false,
+   "sticker": "14800",
+   "stock": 6,
+   "tick": 8,
+   "was_price_shown": null
+  },
+  {
+   "coupon_id": null,
+   "listing_id": "l_v004_DD1391-100",
+   "on_sale": false,
+   "sticker": "14800",
+   "stock": 6,
+   "tick": 9,
+   "was_price_shown": null
+  },
+  {
+   "coupon_id": null,
+   "listing_id": "l_v004_CW1590-100",
+   "on_sale": false,
+   "sticker": "8200",
+   "stock": 4,
+   "tick": 0,
+   "was_price_shown": null
+  },
+  {
+   "coupon_id": null,
+   "listing_id": "l_v004_CW1590-100",
+   "on_sale": false,
+   "sticker": "8200",
+   "stock": 4,
+   "tick": 1,
+   "was_price_shown": null
+  },
+  {
+   "coupon_id": null,
+   "listing_id": "l_v004_CW1590-100",
+   "on_sale": false,
+   "sticker": "8200",
+   "stock": 4,
+   "tick": 2,
+   "was_price_shown": null
+  },
+  {
+   "coupon_id": null,
+   "listing_id": "l_v004_CW1590-100",
+   "on_sale": false,
+   "sticker": "8200",
+   "stock": 4,
+   "tick": 3,
+   "was_price_shown": null
+  },
+  {
+   "coupon_id": null,
+   "listing_id": "l_v004_CW1590-100",
+   "on_sale": false,
+   "sticker": "8200",
+   "stock": 4,
+   "tick": 4,
+   "was_price_shown": null
+  },
+  {
+   "coupon_id": null,
+   "listing_id": "l_v004_CW1590-100",
+   "on_sale": false,
+   "sticker": "8200",
+   "stock": 4,
+   "tick": 5,
+   "was_price_shown": null
+  },
+  {
+   "coupon_id": null,
+   "listing_id": "l_v004_CW1590-100",
+   "on_sale": false,
+   "sticker": "8200",
+   "stock": 4,
+   "tick": 6,
+   "was_price_shown": null
+  },
+  {
+   "coupon_id": null,
+   "listing_id": "l_v004_CW1590-100",
+   "on_sale": false,
+   "sticker": "8200",
+   "stock": 4,
+   "tick": 7,
+   "was_price_shown": null
+  },
+  {
+   "coupon_id": null,
+   "listing_id": "l_v004_CW1590-100",
+   "on_sale": false,
+   "sticker": "8200",
+   "stock": 4,
+   "tick": 8,
+   "was_price_shown": null
+  },
+  {
+   "coupon_id": null,
+   "listing_id": "l_v004_CW1590-100",
+   "on_sale": false,
+   "sticker": "8200",
+   "stock": 4,
+   "tick": 9,
+   "was_price_shown": null
+  }
+ ],
+ "products": [
+  {
+   "brand": "Nike",
+   "colorway_name": "White/Black",
+   "fair_price_eur": "110.00",
+   "hs_category": "FOOTWEAR_TEXTILE",
+   "id": "p_DD1391-100",
+   "is_kids_version_of": null,
+   "model": "Dunk Low",
+   "origin_country": "VN",
+   "sizes_eu": [
+    "42",
+    "43",
+    "44"
+   ],
+   "style_code": "DD1391-100",
+   "weight_kg": "1.20"
+  },
+  {
+   "brand": "Nike",
+   "colorway_name": "White/Black",
+   "fair_price_eur": "60.00",
+   "hs_category": "FOOTWEAR_TEXTILE",
+   "id": "p_CW1590-100",
+   "is_kids_version_of": "DD1391-100",
+   "model": "Dunk Low GS",
+   "origin_country": "VN",
+   "sizes_eu": [
+    "36",
+    "37",
+    "38"
+   ],
+   "style_code": "CW1590-100",
+   "weight_kg": "0.90"
+  },
+  {
+   "brand": "Nike",
+   "colorway_name": "Varsity Red/Black",
+   "fair_price_eur": "180.00",
+   "hs_category": "FOOTWEAR_LEATHER",
+   "id": "p_DZ5485-612",
+   "is_kids_version_of": null,
+   "model": "Air Jordan 1 High",
+   "origin_country": "CN",
+   "sizes_eu": [
+    "42",
+    "43",
+    "44"
+   ],
+   "style_code": "DZ5485-612",
+   "weight_kg": "1.40"
+  },
+  {
+   "brand": "Adidas",
+   "colorway_name": "Cloud White/Core Black",
+   "fair_price_eur": "95.00",
+   "hs_category": "FOOTWEAR_LEATHER",
+   "id": "p_GW2288",
+   "is_kids_version_of": null,
+   "model": "Samba OG",
+   "origin_country": "VN",
+   "sizes_eu": [
+    "42",
+    "43",
+    "44"
+   ],
+   "style_code": "GW2288",
+   "weight_kg": "1.10"
+  },
+  {
+   "brand": "New Balance",
+   "colorway_name": "Grey",
+   "fair_price_eur": "200.00",
+   "hs_category": "FOOTWEAR_TEXTILE",
+   "id": "p_M990GL6",
+   "is_kids_version_of": null,
+   "model": "990v6",
+   "origin_country": "US",
+   "sizes_eu": [
+    "42",
+    "43",
+    "44"
+   ],
+   "style_code": "M990GL6",
+   "weight_kg": "1.30"
+  }
+ ],
+ "seed": 0,
+ "traps": [
+  {
+   "correct_behavior": "Trust layer flags PRICE_TOO_GOOD; the agent never buys and at most alerts with the flags stated.",
+   "explanation": "AJ1 Lost & Found at £99 (~45% under market) with a fake £250 'was' anchor never actually charged.",
+   "listing_id": "l_v003_DZ5485-612",
+   "ticks": [
+    0,
+    9
+   ],
+   "trap_type": "bait",
+   "vendor_id": "v_003"
+  },
+  {
+   "correct_behavior": "Matcher emits COLORWAY_CONFLICT (title tokens contradict the style code); listing is alert-only, never auto-buy.",
+   "explanation": "Title says '990v6 Black'; the actual product is the Grey colorway (M990GL6). Right model, wrong colorway claim.",
+   "listing_id": "l_v002_M990GL6",
+   "ticks": [
+    0,
+    9
+   ],
+   "trap_type": "colorway",
+   "vendor_id": "v_002"
+  }
+ ],
+ "vendors": [
+  {
+   "channel": "OFFICIAL",
+   "currency": "EUR",
+   "domain": "adidas.com",
+   "domain_age_days": 4000,
+   "domestic_shipping": [
+    "4.00",
+    "COURIER"
+   ],
+   "geo": "DE",
+   "id": "v_001",
+   "ioss_registered": false,
+   "is_fraudulent": false,
+   "name": "Adidas Official",
+   "return_days": 30,
+   "review_avg": "4.60",
+   "review_count": 250000,
+   "reviews_last_30d": 3000,
+   "shipping_table": {
+    "EU": [
+     "5.00",
+     "COURIER"
+    ]
+   },
+   "ships_to": [
+    "DE",
+    "ES",
+    "FR",
+    "IT",
+    "NL",
+    "PL"
+   ]
+  },
+  {
+   "channel": "AUTHORIZED_RETAILER",
+   "currency": "EUR",
+   "domain": "sneakerhut.de",
+   "domain_age_days": 2200,
+   "domestic_shipping": [
+    "4.90",
+    "COURIER"
+   ],
+   "geo": "DE",
+   "id": "v_002",
+   "ioss_registered": false,
+   "is_fraudulent": false,
+   "name": "SneakerHut",
+   "return_days": 14,
+   "review_avg": "4.40",
+   "review_count": 1840,
+   "reviews_last_30d": 25,
+   "shipping_table": {
+    "EU": [
+     "6.90",
+     "COURIER"
+    ]
+   },
+   "ships_to": [
+    "DE",
+    "FR",
+    "NL",
+    "PL"
+   ]
+  },
+  {
+   "channel": "AUTHORIZED_RETAILER",
+   "currency": "GBP",
+   "domain": "kickworld.co.uk",
+   "domain_age_days": 800,
+   "domestic_shipping": [
+    "3.50",
+    "COURIER"
+   ],
+   "geo": "UK",
+   "id": "v_003",
+   "ioss_registered": false,
+   "is_fraudulent": false,
+   "name": "KickWorld UK",
+   "return_days": 14,
+   "review_avg": "4.10",
+   "review_count": 320,
+   "reviews_last_30d": 8,
+   "shipping_table": {
+    "EU": [
+     "6.50",
+     "COURIER"
+    ]
+   },
+   "ships_to": [
+    "DE",
+    "PL",
+    "UK"
+   ]
+  },
+  {
+   "channel": "AUTHORIZED_RETAILER",
+   "currency": "JPY",
+   "domain": "tokyokicks.jp",
+   "domain_age_days": 1500,
+   "domestic_shipping": [
+    "800",
+    "POSTAL"
+   ],
+   "geo": "JP",
+   "id": "v_004",
+   "ioss_registered": false,
+   "is_fraudulent": false,
+   "name": "Tokyo Kicks",
+   "return_days": 7,
+   "review_avg": "4.50",
+   "review_count": 900,
+   "reviews_last_30d": 12,
+   "shipping_table": {
+    "JP": [
+     "800",
+     "POSTAL"
+    ]
+   },
+   "ships_to": [
+    "JP"
+   ]
+  }
+ ],
+ "whitelist": [
+  {
+   "domain": "adidas.com",
+   "vendor_id": "v_001"
+  }
+ ]
+}

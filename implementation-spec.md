@@ -286,7 +286,7 @@ class World(BaseModel):
     products: ...; aliases: ...; vendors: ...; whitelist: ...
     middlemen: ...; listings: ...; price_events: ...; coupons: ...
     fx: ...; geo_promos: ...; traps: list[TrapRecord]
-    oracle: dict[str, OracleBest]      # per hunt-template, see §4.6
+    oracle: dict[str, OracleAnswer]    # per hunt-template: {allow, never} OracleBest pair (§4.6)
 ```
 
 ### 3.3 Hunt-side models
@@ -356,6 +356,7 @@ class RouteQuote(BaseModel):           # one priced way to obtain one listing at
     landed_eur: Decimal                # = sum(line_items)
     eta_ticks: int
     p_cancel_est: Decimal              # 0 unless IP_GATED (agent's estimate, not truth)
+    notes: list[str]                   # assembly annotations ("coupon_invalid:expired" …, §5.5)
 
 class LineItem(BaseModel):
     code: Literal["GOODS","COUPON","SHIP_DIRECT","SHIP_DOM","MM_FLAT","MM_PCT",
@@ -515,7 +516,7 @@ HS_RATE = {FOOTWEAR_TEXTILE: 0.169, FOOTWEAR_LEATHER: 0.08}
 fee(POSTAL)=€6.00; fee(COURIER)=€15.00
 ```
 
-Definitions (normative): **intrinsic** = discounted goods value in EUR (coupon already applied), excluding all transport. **transport_eur** = all freight from the vendor to the PL border: direct route → the vendor's international shipping; middleman route → **domestic leg + international leg** (`SHIP_DOM + SHIP_INTL`) — the EU import-VAT base includes transport to destination, and hiding the domestic leg from it understates landed cost. Middleman *service fees* (`MM_FLAT`, `MM_PCT`) stay out of the base — a stated simplification (real rules can pull commissions in; §14.9). `carrier` for a middleman route = `middleman.intl_carrier`. The €150 comparison is `<=` (at exactly €150, low-value rules apply). Threshold conversion uses that tick's FX — a stated simplification vs. real monthly customs rates. Note the **cliff got steeper** under `EU_2026_07`: €149 intrinsic → €3 flat; €151 → 16.9% of the full CIF value — the cliff-pair trap (§4.5) demos the current law.
+Definitions (normative): **zero-amount lines are omitted** — a preferential-origin import has no `DUTY` line at all, not `DUTY 0.00` (V5 asserts absence). **intrinsic** = discounted goods value in EUR (coupon already applied), excluding all transport. **transport_eur** = all freight from the vendor to the PL border: direct route → the vendor's international shipping; middleman route → **domestic leg + international leg** (`SHIP_DOM + SHIP_INTL`) — the EU import-VAT base includes transport to destination, and hiding the domestic leg from it understates landed cost. Middleman *service fees* (`MM_FLAT`, `MM_PCT`) stay out of the base — a stated simplification (real rules can pull commissions in; §14.9). `carrier` for a middleman route = `middleman.intl_carrier`. The €150 comparison is `<=` (at exactly €150, low-value rules apply). Threshold conversion uses that tick's FX — a stated simplification vs. real monthly customs rates. Note the **cliff got steeper** under `EU_2026_07`: €149 intrinsic → €3 flat; €151 → 16.9% of the full CIF value — the cliff-pair trap (§4.5) demos the current law.
 
 ### 5.4 Route enumeration (`routes.py`)
 
@@ -533,7 +534,7 @@ routes(listing, tick, mandate):
             yield Via(m, sticker, tier, obs_geo)
 ```
 
-Rules: an `IP_GATED` or `STOREFRONT` promo price is only obtainable with a domestic delivery address ⇒ always a middleman route. A `BASE` price may also be routed via middleman when the vendor doesn't ship to PL. ETA: direct = 2 (EU) / 5 (UK/US) / 8 (JP); via = domestic 1–2 + `m.extra_ticks`.
+Rules: an `IP_GATED` or `STOREFRONT` promo price is only obtainable with a domestic delivery address ⇒ always a middleman route. A `BASE` price may also be routed via middleman when the vendor doesn't ship to PL. ETA: direct = 2 (EU) / 5 (UK/US) / 8 (JP); via = `ETA_DOMESTIC_LEG` (fixed 1 tick — decided, not a range) + `m.extra_ticks`.
 
 ### 5.5 Landed assembly (`landed.py`)
 
