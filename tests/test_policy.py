@@ -112,6 +112,33 @@ def test_high_trust_best_ever_offer_inside_band_emits_e3(monkeypatch):
     assert receipt.chosen.quote.landed_eur == D("124.00")
 
 
+def test_approved_over_cap_offer_inside_band_buys_exact_quote(monkeypatch):
+    def only_official(listing, *args, **kwargs):
+        if listing.id == "l_v001_DD1391-100":
+            return MatchResult(
+                style_code="DD1391-100", colorway_confirmed=True, confidence=0.99
+            )
+        return MatchResult()
+
+    monkeypatch.setattr("dealhunter.engine.policy.match", only_official)
+    current = hunt(cap="120")
+    request = evaluate_tick(current, 0, world(), CFG, NullClient())
+    assert request.action == Action.ASK
+    assert request.escalation_tier == "E3"
+    assert current.pending_ask is not None
+
+    approved_hash = current.pending_ask.quote_hash
+    approve_pending_ask(current, approved_hash)
+    purchase = evaluate_tick(current, 0, world(), CFG, NullClient())
+
+    assert purchase.action == Action.BUY
+    assert purchase.decided_by == DecidedBy.HUMAN
+    assert purchase.chosen is not None
+    assert purchase.chosen.quote.landed_eur == D("124.00")
+    assert current.pending_ask.quote_hash == approved_hash
+    assert current.pending_ask.status == "CONSUMED"
+
+
 def test_revoked_expired_and_wrong_size_mandates_never_buy():
     revoked = evaluate_tick(hunt(revoked=True), 0, world(), CFG, NullClient())
     expired = evaluate_tick(hunt(expires=0), 0, world(), CFG, NullClient())

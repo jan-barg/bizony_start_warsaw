@@ -1,4 +1,4 @@
-"""Live safety assertions for the S1 immediate engine (spec §6.3)."""
+"""Live safety assertions for immediate and monitor execution (spec §6.3)."""
 
 from decimal import Decimal
 
@@ -23,11 +23,7 @@ def _matching_consumed_ask(hunt: Hunt, kind: AskKind, receipt: Receipt) -> bool:
 
 
 def assert_s1_invariants(receipt: Receipt, hunt: Hunt) -> None:
-    """Assert invariants 1–5 and 7 on an emitted immediate receipt.
-
-    S1 does not create asks, but quote-exact consumed-ask checks are included so
-    later E2/E3 work cannot weaken the purchase boundary accidentally.
-    """
+    """Assert invariants 1–5 and 7 on an emitted decision receipt."""
     cap = hunt.mandate.cap_landed_eur
     band_limit = cap * (Decimal("1") + hunt.mandate.overcap_ask_band_pct)
 

@@ -1,6 +1,6 @@
 # SolidHunt — Work Order Status
 
-*Living status doc against `build-plan.md` / `agent-build-orders.md`. Updated: 2026-07-11 for the `feat/engine-s2` merge. Verified branch suite: **238 passed, 0 xfailed**; matcher integration: **5 passed**.*
+*Living status doc against `build-plan.md` / `agent-build-orders.md`. Updated: 2026-07-11 after final B acceptance audit. Verified suite: **239 passed, 0 xfailed**; matcher integration: **5 passed**.*
 
 ---
 
@@ -23,7 +23,7 @@
 - [ ] **WO-1 step 9 — `evalx/`** (still an empty `__init__.py`): runner with live invariant assertions, `GREEDY_STICKER` / `LANDED_NO_TRUST` baselines, §10.3 metric formulas (visibility-based encounters, `strike_quality`, paired regret/miss), `report.md` + CSV. *Immediate-mode evals can run against the real engine today; monitor rows slot in when B lands.*
 
 ### Person B — engine ✅ COMPLETE
-**Done:** WO-2 end to end — exact customs/landed cost (V1–V8a), routes, observable trust/EV, stopping mathematics (V9), immediate and monitor policies, E0–E5 escalation, interruption budget, quote-exact asks, alerts, orders, cancellation/retry/refunds, settlement epilogue, invariants 1–8, and byte-identical seed-42 replay (V10).
+**Done:** WO-2 end to end — exact customs/landed cost (V1–V8a), routes, observable trust/EV, stopping mathematics (V9), immediate and monitor policies, E0–E5 escalation, interruption budget, quote-exact asks (including approved within-band E3 purchase), alerts, orders, cancellation/retry/refunds, settlement epilogue, invariants 1–8, and byte-identical seed-42 replay (V10).
 
 The Stage-0 matcher fallback is deleted; the real matcher is memoized per hunt/listing. Canonical seed-42 proof hashes and verification commands are in `reports/feat-engine.md`.
 

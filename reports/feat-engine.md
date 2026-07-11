@@ -90,7 +90,10 @@ checks the actual safety contract: no BUY and `purchase_eligible=False`.
 
 ## Final S2 verification (2026-07-11)
 
-- Default suite twice: `238 passed, 5 deselected, 0 xfailed` on each run.
+- Final B closure suite: `239 passed, 5 deselected, 0 xfailed`. Earlier S2
+  delivery passes had `238 passed`; the added test is the required positive
+  proof that an exact approved E3 quote inside the over-cap band buys and
+  consumes its approval.
 - Real-matcher integration suite: `5 passed`.
 - V10 is a normal acceptance test, not skipped or integration-deselected. It
   compares two fresh seed-42 worlds and full 90-tick monitor receipt streams as
