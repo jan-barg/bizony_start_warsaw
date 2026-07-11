@@ -1,6 +1,6 @@
 # SolidHunt — Work Order Status
 
-*Living status doc against `build-plan.md` / `agent-build-orders.md`. Updated: 2026-07-11 after merging S2 engine into Person D's branch. Default suite: **238 passed, 0 xfailed**; extended matcher integration: **5 passed, 1 failed** on the run-isolation contract.*
+*Living status doc against `build-plan.md` / `agent-build-orders.md`. Updated: 2026-07-11 after Person D's S2 integration correction. Default suite: **238 passed, 0 xfailed**; extended matcher integration: **6 passed**; V10: **passed**.*
 
 ---
 
@@ -42,8 +42,8 @@ The Stage-0 matcher fallback is deleted; the real matcher is memoized per hunt/l
 
 **S2 — B's monitor branch is merged; D integration verification in progress:**
 - [x] Under this work order's explicit branch-sync consent, fetch and merge the latest `origin/develop`; B's completed engine slice arrived through `develop`, not a direct feature-branch merge.
-- [ ] Correct matcher memoization under `run_monitor`: cache `MatchResult` once per `(hunt.id, listing.id)` for that monitor run; no module-global or cross-hunt state. B's merged implementation is module-global, so D's run-isolation gate remains red.
-- [ ] Prove one matcher/LLM evaluation per listing across ticks, isolation between hunts, deterministic `NullClient`/replay receipts, and tier-4 calls only for fuzzy gray cases.
+- [x] Correct matcher memoization under `run_monitor`: a context-local cache stores `MatchResult` once per `(hunt.id, listing.id)` for one engine execution; no result leaks into another run with the same deterministic hunt ID.
+- [x] Prove one matcher evaluation per listing across ticks, isolation between runs/hunts, deterministic `NullClient`/replay behavior, and tier-4 calls only for fuzzy gray cases (21 focused tests plus V10 green).
 - [x] Verify B removed the Stage-0 matcher fallback from `policy.py`.
 - [x] Re-run seeds 1–5 (96.952224% non-trap identity), every planted matcher trap (zero missed), and the four alert-only flags; none enters a BUY path.
 
@@ -74,15 +74,15 @@ The Stage-0 matcher fallback is deleted; the real matcher is memoized per hunt/l
 These failures are present on `develop` before Person D's post-merge work. Person D does not absorb cross-owned fixes, but the final Person D PR cannot merge until the owners make the complete gate green.
 
 - **Person A:** 5 Ruff failures (`world/oracle.py`, `world/traps.py`, `tests/test_world.py`) and 3 mypy failures (`world/pricing.py`, `world/oracle.py`).
-- **Person B:** engine Ruff/mypy gates are green after the S2 merge; D's separate run-isolation memo contract remains open above.
+- **Person B/D:** engine Ruff/mypy and run-isolation memo gates are green after D's S2 integration correction.
 - **Person C:** 1 Ruff failure and 9 mypy failures in `api/app.py`.
 - **Person D:** matcher/LLM-focused pytest, Ruff, and mypy gates are green on the synchronized branch.
 
 ## Order of operations from here
 
 1. ✅ `feat/engine-s2` merged into `develop` at `481c409`; V1–V10 are green.
-2. **B/D:** replace the module-global matcher cache with run-scoped `(hunt.id, listing.id)` memoization and turn D's extended integration gate green.
-3. In parallel: **C wires real intake/narration and SSE → `run_monitor`**; **A builds `evalx`** with the 20-seed S2 run.
+2. ✅ **B/D:** run-scoped `(hunt.id, listing.id)` memoization and D's extended integration gate are green.
+3. **C/D:** wire real intake/narration and SSE → `run_monitor`; **A builds `evalx`** with the 20-seed S2 run.
 4. **S2 close-out:** delete the fixture replayer, run a browser demo of a fully real monitor hunt, and turn failures from the 20-seed evaluation into the B/D bug queue.
 5. **S3:** Judge View, warm demo cache, 200-seed four-policy evaluation, feature freeze, `demo` tag on `main`, and two rehearsals (`--no-llm` and warmed cache).
 

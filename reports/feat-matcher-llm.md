@@ -121,21 +121,19 @@ Audit date: 2026-07-11. Integration base: `origin/develop` at `481c409`.
 | WO-3 task 5 — veto-only adjudication | `tests/test_llm_adjudicate.py`; outside-list/refusal/Null abstention | complete |
 | WO-3 task 6 — placeholder-safe narration | `tests/test_llm_narrate.py`; hostile-name, digit, placeholder, imperative fallbacks | complete |
 | WO-3 task 7 — final demo cache | Current reviewed 8-row artifact is valid; exact seed-42 S3 demo requests are not frozen | blocked by final demo script |
-| S2 monitor memoization | B monitor is merged; reuse across ticks passes, but a second execution with the same deterministic hunt ID reuses the module-global cache | blocked by B memo correction |
+| S2 monitor memoization | Context-local `(hunt.id, listing.id)` cache; 6 matcher integration tests, 21 combined focused tests, and V10 pass | complete |
 | S3 intake/narration API/UI wiring | D modules are ready; `api/app.py` still uses regex intake and fixed narration | blocked by C integration |
 | Full integrated static gate | Person B/D-owned paths are green | blocked by A/C failures listed in `WORK-ORDER-STATUS.md` |
 | Offline/browser rehearsal | Real monitor is available and module replay is deterministic; API/UI still use fixtures | blocked by C integration |
 
 ### S2 handoff finding
 
-Person B's merged S2 engine removes the Stage-0 fallback and adds matcher reuse
-across ticks. Its current cache is module-global
-and keyed by world/brief/client details in addition to hunt and listing. The
-approved contract is narrower and run-scoped: a new monitor execution must not
-reuse in-memory results from an earlier execution, even if a deterministic hunt
-ID is restored. The new integration regression runs through the real monitor:
-the first execution calls the matcher once per listing, while the second calls
-it zero times and reuses every prior result. B owns the engine correction.
+Person B's merged S2 engine removed the Stage-0 fallback and added matcher reuse
+across ticks, but the first implementation stored results in a module-global
+cache. D's regression reproduced cross-run leakage with the same deterministic
+hunt ID. Commit `c9a81fc` replaced the cache with a context-local execution
+scope keyed exactly by `(hunt.id, listing.id)`. The first and second executions
+now each call the matcher once per listing; V10 remains byte-identical.
 
 Person D is **not yet complete** under the post-merge checklist. WO-3 tasks 1–6
 are complete; task 7 and the S2/S3 cross-person acceptance gates remain blocked
@@ -159,3 +157,4 @@ Local post-merge commits (not pushed):
 - `a674258` — `docs(llm): reconcile final S3 obligations`
 - `08977f6` — `docs(llm): record post-merge integration proof`
 - `e7ce513` — `merge: integrate S2 engine into matcher branch`
+- `c9a81fc` — `fix(matcher): scope monitor memo per execution`
