@@ -12,13 +12,31 @@ Bracketed figures: Ruleset.EU_2025_LEGACY.
 from decimal import Decimal as D
 from pathlib import Path
 
-import pytest
-
 from dealhunter.core.config import Constants
-from dealhunter.core.enums import AccessTier, Carrier, Geo, HsCategory, Mode, Ruleset, Zone
-from dealhunter.core.models import Coupon, Mandate, RouteSpec, World
+from dealhunter.core.enums import (
+    AccessTier,
+    Carrier,
+    Geo,
+    HsCategory,
+    HuntStatus,
+    Mode,
+    Ruleset,
+    Zone,
+)
+from dealhunter.core.models import (
+    Brief,
+    Coupon,
+    Hunt,
+    Mandate,
+    RouteSpec,
+    World,
+    canonical_json,
+)
 from dealhunter.engine.customs import import_charges
 from dealhunter.engine.landed import assemble
+from dealhunter.engine.loop import run_monitor
+from dealhunter.llm.client import NullClient
+from dealhunter.world.generate import generate_world
 
 ROOT = Path(__file__).resolve().parent.parent
 CFG = Constants()
@@ -189,8 +207,28 @@ def test_v9_stopping_sanity():
     assert abs(p_better(hist, current_best=D("95"), horizon=1, cfg=CFG) - D("0.409")) < D("0.001")
 
 
-@pytest.mark.integration
-def test_v10_determinism_byte_identical():
-    """Same (seed, template, NullClient) ⇒ byte-identical receipts. Runs at S2
-    when world gen + engine + matcher are merged."""
-    pytest.skip("sync-point S2 test — needs generate_world + run_monitor")
+def test_v10_determinism_byte_identical(tmp_path, monkeypatch):
+    """Same (seed, template, NullClient) ⇒ byte-identical monitor receipts."""
+    monkeypatch.chdir(tmp_path)
+
+    def replay() -> bytes:
+        hunt = Hunt(
+            id="h_v10_seed_42",
+            brief=Brief(
+                product_query="Nike Dunk Low",
+                colorway="Panda",
+                style_code="DD1391-100",
+                size_eu=D("42"),
+            ),
+            mandate=Mandate(
+                mode=Mode.MONITOR,
+                cap_landed_eur=D("150.00"),
+                expires_tick=90,
+            ),
+            status=HuntStatus.RUNNING,
+            start_tick=0,
+        )
+        receipts = run_monitor(hunt, generate_world(42, CFG), CFG, NullClient())
+        return ("\n".join(canonical_json(receipt) for receipt in receipts) + "\n").encode()
+
+    assert replay() == replay()
