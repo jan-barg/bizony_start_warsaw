@@ -1,0 +1,22 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="480" viewBox="0 0 1200 480" role="img" aria-labelledby="title desc">
+<title id="title">Timeline run-088</title>
+<desc id="desc">Full 90-day legitimate landed-price curve with cap and purchase markers.</desc>
+<rect width="1200" height="480" fill="#FFFFFF"/>
+<style>text{font-family:Inter,Arial,sans-serif;fill:#080808} .small{font-size:11px} .label{font-size:13px;font-weight:600} .title{font-size:22px;font-weight:700}</style>
+<text x="48" y="40" class="title">run-088 · SH028143 · EU 43</text>
+<text x="48" y="66" class="label">Cap €92.56 · optimum €75.55 on day 57</text>
+<rect x="70.0" y="95.0" width="1080.0" height="310.0" fill="#F4F6F3" stroke="#D8DDD9"/>
+<line x1="70.0" y1="137.4" x2="1150.0" y2="137.4" stroke="#C52A22" stroke-width="1" stroke-dasharray="4 3"/>
+<path d="M70.0,180.8 L82.1,169.4 L94.3,159.8 L106.4,170.2 L118.5,173.6 L130.7,170.4 L142.8,163.9 L154.9,177.8 L167.1,188.0 L179.2,176.9 L191.3,159.1 L203.5,169.7 L215.6,169.4 L227.8,147.9 L239.9,153.2 L252.0,162.3" fill="none" stroke="#59615B" stroke-width="1.5"/>
+<path d="M519.0,170.8 L531.1,198.3 L543.3,193.4 L555.4,180.5 L567.5,199.9 L579.7,181.8 L591.8,351.0 L603.9,368.3 L616.1,346.7 L628.2,350.3 L640.3,232.0 L652.5,353.8 L664.6,354.1 L676.7,327.0 L688.9,315.3 L701.0,341.5 L713.1,331.8 L725.3,313.1 L737.4,331.5 L749.6,209.6 L761.7,383.6 L773.8,381.7 L786.0,362.5 L798.1,182.2 L810.2,186.3 L822.4,160.4 L834.5,137.2 L846.6,116.4 L858.8,123.9 L870.9,167.6 L883.0,143.3" fill="none" stroke="#59615B" stroke-width="1.5"/>
+<path d="M1089.3,138.7 L1101.5,147.4 L1113.6,136.1 L1125.7,145.0 L1137.9,157.8 L1150.0,176.7" fill="none" stroke="#59615B" stroke-width="1.5"/>
+<polygon points="761.7,377.6 767.7,383.6 761.7,389.6 755.7,383.6" fill="#2859C5" stroke="#FFFFFF" stroke-width="1"/>
+<rect x="64.0" y="174.8" width="12.0" height="12.0" fill="#A76100" stroke="#FFFFFF" stroke-width="1"/>
+<text x="70.0" y="430" text-anchor="middle" class="small">day 0</text>
+<text x="434.0" y="430" text-anchor="middle" class="small">day 30</text>
+<text x="798.1" y="430" text-anchor="middle" class="small">day 60</text>
+<text x="1150.0" y="430" text-anchor="middle" class="small">day 89</text>
+<text x="70" y="460" class="small" fill="#137A3D">● SolidHunt: miss</text>
+<text x="350" y="460" class="small" fill="#A76100">■ Casual shopper: day 0, €89.56</text>
+<text x="680" y="460" class="small" fill="#2859C5">◆ Optimal: day 57, €75.55</text>
+</svg>

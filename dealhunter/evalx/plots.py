@@ -1,0 +1,579 @@
+"""Dependency-free, deterministic SVG plots for evaluation reports."""
+from __future__ import annotations
+
+from html import escape
+from math import ceil
+from pathlib import Path
+from statistics import mean, median
+
+from .metrics import RunEvaluation
+
+
+PAPER = "#FFFFFF"
+SOFT = "#F4F6F3"
+INK = "#080808"
+MUTED = "#59615B"
+BORDER = "#D8DDD9"
+BRAND = "#43F27E"
+ENGINE = BRAND
+ENGINE_LINE = "#0B6B32"
+USER = INK
+HOLD = "#A76100"
+OPTIMAL = "#2859C5"
+CAP = "#C52A22"
+
+
+def _policy_label(runs: list[RunEvaluation], attribute: str) -> str:
+    name = next(
+        (
+            decision.policy
+            for run in runs
+            if (decision := getattr(run, attribute)) is not None
+        ),
+        "SOLIDHUNT_IMPROVED_MONITOR" if attribute == "engine" else "CASUAL_CHECKOUT_3D",
+    )
+    if name == "SOLIDHUNT_IMPROVED_MONITOR":
+        return "SolidHunt improved monitor"
+    if name == "SOLIDHUNT_EVAL_MONITOR":
+        return "SolidHunt spec monitor"
+    if name.startswith("CASUAL_CHECKOUT_"):
+        interval = name.removeprefix("CASUAL_CHECKOUT_").removesuffix("D")
+        return f"Casual checkout shopper ({interval}-day)"
+    return name.replace("_", " ").title()
+
+
+def _write(path: Path, content: str) -> None:
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(content, encoding="utf-8")
+
+
+def _svg_start(width: int, height: int, title: str, description: str) -> list[str]:
+    lockup_x = width - 166
+    return [
+        f'<svg xmlns="http://www.w3.org/2000/svg" width="{width}" height="{height}" viewBox="0 0 {width} {height}" role="img" aria-labelledby="title desc">',
+        f"<title id=\"title\">{escape(title)}</title>",
+        f"<desc id=\"desc\">{escape(description)}</desc>",
+        f'<rect width="{width}" height="{height}" fill="{PAPER}"/>',
+        f'<rect width="{width}" height="8" fill="{BRAND}"/>',
+        '<style>text{font-family:Inter,Arial,Helvetica,sans-serif;fill:#080808} .small{font-size:11px} .label{font-size:13px;font-weight:650} .title{font-size:24px;font-weight:750;letter-spacing:-.7px} .subtitle{font-size:12px;fill:#59615B} .metric{font-size:18px;font-weight:750;letter-spacing:-.3px}</style>',
+        f'<g aria-label="SolidHunt" transform="translate({lockup_x} 19)">',
+        f'<rect width="28" height="28" fill="{BRAND}"/>',
+        f'<path d="M6 12V6H12 M16 6H22V12 M22 16V22H16 M12 22H6V16" fill="none" stroke="{INK}" stroke-width="3"/>',
+        f'<rect x="13" y="13" width="3" height="3" fill="{INK}" transform="rotate(45 14.5 14.5)"/>',
+        f'<text x="38" y="21" font-size="17" letter-spacing="-.7"><tspan font-weight="500">solid</tspan><tspan font-weight="750">hunt</tspan></text>',
+        '</g>',
+    ]
+
+
+def _coords(
+    tick: int,
+    price: float,
+    left: float,
+    top: float,
+    width: float,
+    height: float,
+    low: float,
+    high: float,
+    horizon: int,
+) -> tuple[float, float]:
+    x = left + (tick / max(horizon - 1, 1)) * width
+    y = top + (high - price) / max(high - low, 0.01) * height
+    return x, y
+
+
+def _line_paths(run: RunEvaluation, left: float, top: float, width: float, height: float, low: float, high: float) -> list[str]:
+    segments: list[list[tuple[float, float]]] = []
+    current: list[tuple[float, float]] = []
+    for point in run.timeline:
+        if point.best_legitimate_eur is None:
+            if current:
+                segments.append(current)
+                current = []
+            continue
+        current.append(_coords(
+            point.tick, float(point.best_legitimate_eur), left, top, width, height,
+            low, high, len(run.timeline),
+        ))
+    if current:
+        segments.append(current)
+    return [
+        '<path d="' + " ".join(
+            ("M" if index == 0 else "L") + f"{x:.1f},{y:.1f}"
+            for index, (x, y) in enumerate(segment)
+        ) + f'" fill="none" stroke="{MUTED}" stroke-width="1.5"/>'
+        for segment in segments
+    ]
+
+
+def _marker(x: float, y: float, kind: str, compact: bool = False) -> str:
+    size = 3.5 if compact else 6
+    if kind == "optimal":
+        points = f"{x:.1f},{y-size:.1f} {x+size:.1f},{y:.1f} {x:.1f},{y+size:.1f} {x-size:.1f},{y:.1f}"
+        return f'<polygon points="{points}" fill="{OPTIMAL}" stroke="{PAPER}" stroke-width="1"/>'
+    if kind == "engine":
+        return f'<circle cx="{x:.1f}" cy="{y:.1f}" r="{size}" fill="{ENGINE}" stroke="{INK}" stroke-width="1.4"/>'
+    return f'<rect x="{x-size:.1f}" y="{y-size:.1f}" width="{2*size:.1f}" height="{2*size:.1f}" fill="{USER}" stroke="{PAPER}" stroke-width="1"/>'
+
+
+def _plot_bounds(run: RunEvaluation) -> tuple[float, float]:
+    values = [float(point.best_legitimate_eur) for point in run.timeline if point.best_legitimate_eur is not None]
+    values.append(float(run.template.cap_eur))
+    if run.engine:
+        values.append(float(run.engine.actual_landed_eur))
+    if run.user:
+        values.append(float(run.user.actual_landed_eur))
+    spread = max(max(values) - min(values), 10.0)
+    return min(values) - spread * 0.08, max(values) + spread * 0.08
+
+
+def _draw_timeline(
+    lines: list[str],
+    run: RunEvaluation,
+    left: float,
+    top: float,
+    width: float,
+    height: float,
+    compact: bool,
+) -> None:
+    low, high = _plot_bounds(run)
+    lines.append(f'<rect x="{left:.1f}" y="{top:.1f}" width="{width:.1f}" height="{height:.1f}" fill="{SOFT}" stroke="{BORDER}"/>')
+    cap_y = _coords(0, float(run.template.cap_eur), left, top, width, height, low, high, len(run.timeline))[1]
+    lines.append(f'<line x1="{left:.1f}" y1="{cap_y:.1f}" x2="{left+width:.1f}" y2="{cap_y:.1f}" stroke="{CAP}" stroke-width="1" stroke-dasharray="4 3"/>')
+    lines.extend(_line_paths(run, left, top, width, height, low, high))
+    optimum = run.optimal
+    assert optimum.best_legitimate_eur is not None
+    ox, oy = _coords(optimum.tick, float(optimum.best_legitimate_eur), left, top, width, height, low, high, len(run.timeline))
+    lines.append(_marker(ox, oy, "optimal", compact))
+    if run.engine:
+        ex, ey = _coords(run.engine.tick, float(run.engine.actual_landed_eur), left, top, width, height, low, high, len(run.timeline))
+        lines.append(_marker(ex, ey, "engine", compact))
+    if run.user:
+        ux, uy = _coords(run.user.tick, float(run.user.actual_landed_eur), left, top, width, height, low, high, len(run.timeline))
+        lines.append(_marker(ux, uy, "user", compact))
+
+
+def write_all_run_timelines(path: Path, runs: list[RunEvaluation]) -> None:
+    columns = 10 if len(runs) >= 50 else 5
+    rows = ceil(len(runs) / columns)
+    cell_width, cell_height = 228, 154
+    width, height = columns * cell_width + 40, rows * cell_height + 100
+    lines = _svg_start(
+        width, height,
+        "SolidHunt 100-run purchase timeline comparison",
+        "Each panel shows the full legitimate landed-price timeline, budget cap, optimal price, SolidHunt evaluation-monitor purchase, and casual shopper purchase.",
+    )
+    lines.append('<text x="20" y="30" class="title">100 paired market timelines</text>')
+    legend = [
+        (OPTIMAL, "diamond", "Optimal legitimate price"),
+        (ENGINE, "circle", _policy_label(runs, "engine")),
+        (USER, "square", _policy_label(runs, "user")),
+        (CAP, "line", "Budget cap"),
+    ]
+    x = 20
+    for color, shape, label in legend:
+        if shape == "line":
+            lines.append(f'<line x1="{x}" y1="57" x2="{x+18}" y2="57" stroke="{color}" stroke-dasharray="4 3"/>')
+        elif shape == "circle":
+            lines.append(f'<circle cx="{x+8}" cy="57" r="5" fill="{color}"/>')
+        elif shape == "square":
+            lines.append(f'<rect x="{x+3}" y="52" width="10" height="10" fill="{color}"/>')
+        else:
+            lines.append(f'<polygon points="{x+8},51 {x+14},57 {x+8},63 {x+2},57" fill="{color}"/>')
+        lines.append(f'<text x="{x+22}" y="61" class="small">{escape(label)}</text>')
+        x += 205
+
+    for index, run in enumerate(runs):
+        column, row = index % columns, index // columns
+        left = 20 + column * cell_width
+        top = 86 + row * cell_height
+        lines.append(f'<text x="{left}" y="{top+11}" class="small">{escape(run.run_id)} · {escape(run.template.style_code)}</text>')
+        _draw_timeline(lines, run, left, top + 17, cell_width - 16, cell_height - 38, True)
+        lines.append(f'<text x="{left}" y="{top+cell_height-5}" class="small" fill="{MUTED}">0</text>')
+        lines.append(f'<text x="{left+cell_width-34}" y="{top+cell_height-5}" class="small" fill="{MUTED}">day 89</text>')
+    lines.append("</svg>")
+    _write(path, "\n".join(lines) + "\n")
+
+
+def write_detailed_timelines(directory: Path, runs: list[RunEvaluation]) -> None:
+    for run in runs:
+        width, height = 1200, 480
+        lines = _svg_start(
+            width, height,
+            f"Timeline {run.run_id}",
+            "Full 90-day legitimate landed-price curve with cap and purchase markers.",
+        )
+        optimal = run.optimal.best_legitimate_eur
+        assert optimal is not None
+        lines.append(f'<text x="48" y="40" class="title">{escape(run.run_id)} · {escape(run.template.style_code)} · EU {run.template.size_eu}</text>')
+        lines.append(f'<text x="48" y="66" class="label">Cap €{run.template.cap_eur} · optimum €{optimal} on day {run.optimal.tick}</text>')
+        _draw_timeline(lines, run, 70, 95, 1080, 310, False)
+        for tick in (0, 30, 60, 89):
+            x = 70 + tick / 89 * 1080
+            lines.append(f'<text x="{x:.1f}" y="430" text-anchor="middle" class="small">day {tick}</text>')
+        engine_text = "miss" if run.engine is None else f"day {run.engine.tick}, €{run.engine.actual_landed_eur}"
+        user_text = "miss" if run.user is None else f"day {run.user.tick}, €{run.user.actual_landed_eur}"
+        lines.append(f'<text x="70" y="460" class="small" fill="{ENGINE}">● {escape(_policy_label(runs, "engine"))}: {escape(engine_text)}</text>')
+        lines.append(f'<text x="380" y="460" class="small" fill="{USER}">■ {escape(_policy_label(runs, "user"))}: {escape(user_text)}</text>')
+        lines.append(f'<text x="850" y="460" class="small" fill="{OPTIMAL}">◆ Optimal: day {run.optimal.tick}, €{optimal}</text>')
+        lines.append("</svg>")
+        _write(directory / f"{run.run_id}.svg", "\n".join(lines) + "\n")
+
+
+def write_buy_timing(path: Path, runs: list[RunEvaluation]) -> None:
+    width, height = 980, 760
+    left, top, plot = 100, 90, 600
+    lines = _svg_start(
+        width, height,
+        "SolidHunt versus casual shopper purchase timing",
+        "Scatter plot of casual shopper buy day against SolidHunt evaluation-monitor buy day, with a line of equal timing.",
+    )
+    lines.append('<text x="40" y="38" class="title">Who buys first?</text>')
+    lines.append(f'<rect x="{left}" y="{top}" width="{plot}" height="{plot}" fill="{SOFT}" stroke="{BORDER}"/>')
+    for tick in (0, 30, 60, 89):
+        offset = tick / 89 * plot
+        x, y = left + offset, top + plot - offset
+        lines.append(f'<line x1="{x:.1f}" y1="{top}" x2="{x:.1f}" y2="{top+plot}" stroke="{BORDER}"/>')
+        lines.append(f'<line x1="{left}" y1="{y:.1f}" x2="{left+plot}" y2="{y:.1f}" stroke="{BORDER}"/>')
+        lines.append(f'<text x="{x:.1f}" y="{top+plot+24}" text-anchor="middle" class="small">{tick}</text>')
+        lines.append(f'<text x="{left-16}" y="{y+4:.1f}" text-anchor="end" class="small">{tick}</text>')
+    lines.append(f'<line x1="{left}" y1="{top+plot}" x2="{left+plot}" y2="{top}" stroke="{INK}" stroke-width="1.5"/>')
+    both = [run for run in runs if run.engine is not None and run.user is not None]
+    for run in both:
+        x = left + run.user.tick / 89 * plot
+        y = top + plot - run.engine.tick / 89 * plot
+        lines.append(f'<circle cx="{x:.1f}" cy="{y:.1f}" r="5" fill="{ENGINE}" fill-opacity="0.58" stroke="{USER}" stroke-width="1.2"/>')
+    lines.append(f'<text x="{left+plot/2}" y="{top+plot+58}" text-anchor="middle" class="label">{escape(_policy_label(runs, "user"))} buy day</text>')
+    lines.append(f'<text x="28" y="{top+plot/2}" text-anchor="middle" class="label" transform="rotate(-90 28 {top+plot/2})">{escape(_policy_label(runs, "engine"))} buy day</text>')
+    lines.append(f'<text x="750" y="130" class="label">{len(both)} paired purchases</text>')
+    lines.append('<text x="750" y="162" class="small">Above diagonal: SolidHunt buys earlier</text>')
+    lines.append('<text x="750" y="184" class="small">Below diagonal: SolidHunt waits longer</text>')
+    lines.append("</svg>")
+    _write(path, "\n".join(lines) + "\n")
+
+
+def _regret_series(runs: list[RunEvaluation]) -> list[tuple[str, str, list[float]]]:
+    series: list[tuple[str, str, list[float]]] = []
+    for label, color, attribute in (
+        (_policy_label(runs, "engine"), ENGINE, "engine"),
+        (_policy_label(runs, "user"), USER, "user"),
+    ):
+        values = []
+        for run in runs:
+            decision = getattr(run, attribute)
+            optimum = run.optimal.best_legitimate_eur
+            if decision is not None and decision.legitimate and optimum is not None:
+                values.append(float(decision.actual_landed_eur - optimum))
+        series.append((label, color, sorted(values)))
+    return series
+
+
+def _quantile(values: list[float], fraction: float) -> float:
+    if not values:
+        return 0.0
+    ordered = sorted(values)
+    position = (len(ordered) - 1) * fraction
+    lower = int(position)
+    upper = min(lower + 1, len(ordered) - 1)
+    weight = position - lower
+    return ordered[lower] * (1 - weight) + ordered[upper] * weight
+
+
+def write_regret_comparison(path: Path, runs: list[RunEvaluation]) -> None:
+    """Show box plots overlaid with every legitimate purchase."""
+    series = _regret_series(runs)
+    summaries = []
+    for label, color, values in series:
+        q1, med, q3 = (_quantile(values, fraction) for fraction in (0.25, 0.50, 0.75))
+        iqr = q3 - q1
+        lower_fence = q1 - 1.5 * iqr
+        upper_fence = q3 + 1.5 * iqr
+        lower_whisker = min(
+            (value for value in values if value >= lower_fence),
+            default=q1,
+        )
+        upper_whisker = max(
+            (value for value in values if value <= upper_fence),
+            default=q3,
+        )
+        summaries.append((
+            label,
+            color,
+            values,
+            q1,
+            med,
+            q3,
+            lower_whisker,
+            upper_whisker,
+        ))
+    focus_source = max((row[7] for row in summaries), default=1.0)
+    focus_limit = max(5, int(ceil(focus_source / 5)) * 5)
+    all_values = [value for row in summaries for value in row[2]]
+    tail_limit = max(
+        focus_limit + 20,
+        int(ceil(max(all_values, default=focus_limit) / 20)) * 20,
+    )
+    width, height = 1200, 580
+    left, top = 275, 170
+    main_width = 610
+    tail_left, tail_width = 955, 155
+    lane_gap = 145
+
+    def x_position(value: float) -> float:
+        if value <= focus_limit:
+            return left + value / focus_limit * main_width
+        return tail_left + (value - focus_limit) / (tail_limit - focus_limit) * tail_width
+
+    lines = _svg_start(
+        width,
+        height,
+        "Price gap from optimal by strategy",
+        "Horizontal box plots compare legitimate purchase gaps, with every purchase shown as a dot. A split axis preserves detail in the main distribution while retaining the full tail.",
+    )
+    lines.append('<text x="42" y="48" class="title">How far was each purchase from the best possible price?</text>')
+    lines.append(f'<text x="42" y="73" class="subtitle">Box = middle 50% · line = median · every purchase shown · axis breaks after €{focus_limit}</text>')
+    for value in range(0, focus_limit + 1, 10):
+        x = x_position(value)
+        lines.append(f'<line x1="{x:.1f}" y1="{top-62}" x2="{x:.1f}" y2="{top+lane_gap+58}" stroke="{BORDER}"/>')
+        lines.append(f'<text x="{x:.1f}" y="{top+lane_gap+83}" text-anchor="middle" class="small">€{value}</text>')
+    for value in range(focus_limit + 40, tail_limit + 1, 40):
+        x = x_position(value)
+        lines.append(f'<line x1="{x:.1f}" y1="{top-62}" x2="{x:.1f}" y2="{top+lane_gap+58}" stroke="{BORDER}"/>')
+        lines.append(f'<text x="{x:.1f}" y="{top+lane_gap+83}" text-anchor="middle" class="small">€{value}</text>')
+    break_x = (left + main_width + tail_left) / 2
+    lines.append(f'<path d="M{break_x-9:.1f},{top+lane_gap+70} l7,-12 l7,12 l7,-12" fill="none" stroke="{INK}" stroke-width="2"/>')
+    for lane, (
+        label,
+        color,
+        values,
+        q1,
+        med,
+        q3,
+        lower_whisker,
+        upper_whisker,
+    ) in enumerate(summaries):
+        y = top + lane * lane_gap
+        lines.append(f'<text x="{left-24}" y="{y-6}" text-anchor="end" class="label">{escape(label)}</text>')
+        lines.append(f'<text x="{left-24}" y="{y+17}" text-anchor="end" class="small">n={len(values)}</text>')
+        occurrences: dict[float, int] = {}
+        for index, value in enumerate(values):
+            occurrence = occurrences.get(value, 0)
+            occurrences[value] = occurrence + 1
+            x = x_position(value) + (occurrence // 6) * 1.4
+            dot_y = y - 65 + ((index * 3 + occurrence) % 6) * 7
+            stroke = INK if color == ENGINE else PAPER
+            lines.append(f'<circle cx="{x:.1f}" cy="{dot_y:.1f}" r="3.1" fill="{color}" fill-opacity=".55" stroke="{stroke}" stroke-width=".6"/>')
+        lower_x = x_position(lower_whisker)
+        q1_x = x_position(q1)
+        med_x = x_position(med)
+        q3_x = x_position(q3)
+        upper_x = x_position(upper_whisker)
+        box_fill = BRAND if color == ENGINE else SOFT
+        lines.append(f'<line x1="{lower_x:.1f}" y1="{y}" x2="{upper_x:.1f}" y2="{y}" stroke="{INK}" stroke-width="3"/>')
+        lines.append(f'<line x1="{lower_x:.1f}" y1="{y-17}" x2="{lower_x:.1f}" y2="{y+17}" stroke="{INK}" stroke-width="3"/>')
+        lines.append(f'<line x1="{upper_x:.1f}" y1="{y-17}" x2="{upper_x:.1f}" y2="{y+17}" stroke="{INK}" stroke-width="3"/>')
+        lines.append(f'<rect x="{q1_x:.1f}" y="{y-27}" width="{max(q3_x-q1_x, 1):.1f}" height="54" fill="{box_fill}" stroke="{INK}" stroke-width="2"/>')
+        lines.append(f'<line x1="{med_x:.1f}" y1="{y-27}" x2="{med_x:.1f}" y2="{y+27}" stroke="{INK}" stroke-width="5"/>')
+        lines.append(f'<text x="{left}" y="{y+53}" class="small">Q1 €{q1:.2f} · median €{med:.2f} · Q3 €{q3:.2f}</text>')
+    engine_median = summaries[0][4] if summaries else 0.0
+    user_median = summaries[1][4] if len(summaries) > 1 else 0.0
+    improvement = 100 * (user_median - engine_median) / user_median if user_median else 0.0
+    lines.append(f'<text x="{(left+tail_left+tail_width)/2:.1f}" y="{height-93}" text-anchor="middle" class="small">Every legitimate purchase is shown; the split axis keeps the central distribution readable without removing the tail.</text>')
+    lines.append(f'<rect x="42" y="{height-74}" width="{width-84}" height="50" rx="8" fill="{BRAND}"/>')
+    lines.append(f'<text x="64" y="{height-42}" class="metric">SolidHunt median gap is {improvement:.0f}% lower</text>')
+    lines.append(f'<text x="{width-64}" y="{height-42}" text-anchor="end" class="label">€{engine_median:.2f} vs €{user_median:.2f}</text>')
+    lines.append("</svg>")
+    _write(path, "\n".join(lines) + "\n")
+
+
+def write_regret_cdf(path: Path, runs: list[RunEvaluation]) -> None:
+    """Plot cumulative price-gap performance without letting tails set the scale."""
+    series = _regret_series(runs)
+    width, height = 1100, 590
+    left, top, plot_width, plot_height = 100, 120, 780, 350
+    limit = 30
+    lines = _svg_start(
+        width,
+        height,
+        "Cumulative price gap from optimum",
+        "Cumulative share of legitimate purchases at or below each price gap from zero to thirty euros, with larger tails reported in labels.",
+    )
+    lines.append('<text x="42" y="48" class="title">How often does each policy stay close to the optimum?</text>')
+    lines.append('<text x="42" y="73" class="subtitle">Cumulative share of legitimate purchases · higher and further left is better</text>')
+    for percent in range(0, 101, 20):
+        y = top + plot_height * (1 - percent / 100)
+        lines.append(f'<line x1="{left}" y1="{y:.1f}" x2="{left+plot_width}" y2="{y:.1f}" stroke="{BORDER}"/>')
+        lines.append(f'<text x="{left-16}" y="{y+4:.1f}" text-anchor="end" class="small">{percent}%</text>')
+    for value in range(0, limit + 1, 5):
+        x = left + plot_width * value / limit
+        lines.append(f'<line x1="{x:.1f}" y1="{top}" x2="{x:.1f}" y2="{top+plot_height}" stroke="{BORDER}"/>')
+        lines.append(f'<text x="{x:.1f}" y="{top+plot_height+27}" text-anchor="middle" class="small">€{value}</text>')
+    for lane, (_label, color, values) in enumerate(series):
+        points = []
+        for step in range(0, 121):
+            value = limit * step / 120
+            share = sum(item <= value for item in values) / max(len(values), 1)
+            x = left + plot_width * value / limit
+            y = top + plot_height * (1 - share)
+            points.append(f'{x:.1f},{y:.1f}')
+        stroke = ENGINE_LINE if color == ENGINE else USER
+        dash = '' if color == ENGINE else ' stroke-dasharray="9 6"'
+        lines.append(f'<polyline points="{" ".join(points)}" fill="none" stroke="{stroke}" stroke-width="4"{dash}/>')
+        within_ten = 100 * sum(item <= 10 for item in values) / max(len(values), 1)
+        within_thirty = 100 * sum(item <= limit for item in values) / max(len(values), 1)
+        label_y = 150 + lane * 118
+        swatch = BRAND if color == ENGINE else USER
+        short_label = "SolidHunt" if lane == 0 else "Shopper · 3-day"
+        lines.append(f'<rect x="920" y="{label_y-19}" width="18" height="18" fill="{swatch}" stroke="{INK}" stroke-width="1"/>')
+        lines.append(f'<text x="950" y="{label_y-5}" class="label">{escape(short_label)}</text>')
+        lines.append(f'<text x="920" y="{label_y+26}" class="metric">{within_ten:.1f}%</text>')
+        lines.append(f'<text x="920" y="{label_y+46}" class="small">within €10</text>')
+        lines.append(f'<text x="920" y="{label_y+75}" class="small">{within_thirty:.1f}% within €30</text>')
+    lines.append(f'<text x="{left+plot_width/2}" y="{height-47}" text-anchor="middle" class="label">Price paid above the full-horizon optimum</text>')
+    lines.append("</svg>")
+    _write(path, "\n".join(lines) + "\n")
+
+
+def write_paired_outcomes(path: Path, runs: list[RunEvaluation]) -> None:
+    """Count paired wins, ties, and losses without relying on the tail-led mean."""
+    differences = []
+    for run in runs:
+        if (
+            run.engine is not None
+            and run.user is not None
+            and run.engine.legitimate
+            and run.user.legitimate
+        ):
+            differences.append(float(run.user.actual_landed_eur - run.engine.actual_landed_eur))
+    solid_wins = sum(value > 0 for value in differences)
+    ties = sum(value == 0 for value in differences)
+    shopper_wins = sum(value < 0 for value in differences)
+    counts = [
+        ("SolidHunt cheaper", solid_wins, BRAND),
+        ("Same landed price", ties, SOFT),
+        ("Shopper cheaper", shopper_wins, PAPER),
+    ]
+    width, height = 1100, 500
+    left, top, plot_width = 80, 155, 940
+    lines = _svg_start(
+        width,
+        height,
+        "Paired legitimate purchase outcomes",
+        "Counts of runs where SolidHunt was cheaper, both policies paid the same landed price, or the shopper was cheaper among runs where both made legitimate purchases.",
+    )
+    lines.append('<text x="42" y="48" class="title">When both bought, who paid less?</text>')
+    lines.append(f'<text x="42" y="73" class="subtitle">{len(differences)} paired legitimate purchases · landed price compared run by run</text>')
+    cursor = left
+    for label, count, color in counts:
+        segment = plot_width * count / max(len(differences), 1)
+        lines.append(f'<rect x="{cursor:.1f}" y="{top}" width="{segment:.1f}" height="92" fill="{color}" stroke="{INK}" stroke-width="1"/>')
+        lines.append(f'<text x="{cursor+segment/2:.1f}" y="{top+43}" text-anchor="middle" font-size="30" font-weight="750">{count}</text>')
+        lines.append(f'<text x="{cursor+segment/2:.1f}" y="{top+69}" text-anchor="middle" class="small">{100*count/max(len(differences), 1):.1f}%</text>')
+        lines.append(f'<text x="{cursor+segment/2:.1f}" y="{top+125}" text-anchor="middle" class="label">{escape(label)}</text>')
+        cursor += segment
+    average = mean(differences) if differences else 0.0
+    lines.append(f'<rect x="{left}" y="{top+180}" width="{plot_width}" height="82" rx="8" fill="{INK}"/>')
+    lines.append(f'<text x="{left+28}" y="{top+215}" style="fill:{BRAND}" class="metric">Average paired saving: €{average:.2f}</text>')
+    lines.append(f'<text x="{left+28}" y="{top+241}" style="fill:{PAPER}" class="small">Positive means the shopper paid more; the win/tie/loss counts keep the large tail savings in context.</text>')
+    lines.append("</svg>")
+    _write(path, "\n".join(lines) + "\n")
+
+
+def write_outcomes(path: Path, runs: list[RunEvaluation]) -> None:
+    width, height = 1100, 430
+    left, top, plot_width = 260, 115, 760
+    lines = _svg_start(
+        width, height,
+        "Purchase outcomes across 100 runs",
+        "Stacked outcome bars show legitimate purchases, invalid purchases, and misses for SolidHunt and the casual shopper.",
+    )
+    lines.append('<text x="40" y="38" class="title">Did each strategy complete a legitimate purchase?</text>')
+    for lane, (label, attribute) in enumerate((
+        (_policy_label(runs, "engine"), "engine"),
+        (_policy_label(runs, "user"), "user"),
+    )):
+        decisions = [getattr(run, attribute) for run in runs]
+        legitimate = sum(decision is not None and decision.legitimate for decision in decisions)
+        invalid = sum(decision is not None and not decision.legitimate for decision in decisions)
+        missed = len(runs) - legitimate - invalid
+        y = top + lane * 120
+        lines.append(f'<text x="{left-18}" y="{y+30}" text-anchor="end" class="label">{escape(label)}</text>')
+        cursor = left
+        for count, color, name in (
+            (legitimate, ENGINE, "legitimate"),
+            (invalid, CAP, "invalid"),
+            (missed, BORDER, "miss"),
+        ):
+            segment = plot_width * count / max(len(runs), 1)
+            lines.append(f'<rect x="{cursor:.1f}" y="{y}" width="{segment:.1f}" height="52" fill="{color}"/>')
+            if count and segment >= 38:
+                text_color = PAPER if color != BORDER else INK
+                lines.append(f'<text x="{cursor+segment/2:.1f}" y="{y+32}" text-anchor="middle" class="label" style="fill:{text_color}">{count}</text>')
+            cursor += segment
+        lines.append(f'<text x="{left+plot_width}" y="{y+76}" text-anchor="end" class="small">{legitimate} legitimate · {invalid} invalid · {missed} missed</text>')
+    legend_x = left
+    for color, label in ((ENGINE, "Legitimate purchase"), (CAP, "Invalid purchase"), (BORDER, "Miss")):
+        lines.append(f'<rect x="{legend_x}" y="365" width="14" height="14" fill="{color}"/>')
+        lines.append(f'<text x="{legend_x+22}" y="377" class="small">{label}</text>')
+        legend_x += 220
+    lines.append("</svg>")
+    _write(path, "\n".join(lines) + "\n")
+
+
+def write_shopper_sensitivity(
+    path: Path,
+    three_day_summary: dict[str, object],
+    weekly_summary: dict[str, object],
+) -> None:
+    """Compare SolidHunt with attentive and weekly shopper hypotheses."""
+    engine_name = three_day_summary["methodology"]["solid_hunt_policy"]
+    three_name = three_day_summary["methodology"]["regular_user_policy"]
+    weekly_name = weekly_summary["methodology"]["regular_user_policy"]
+    rows = [
+        ("SolidHunt improved", ENGINE, three_day_summary["policies"][engine_name]),
+        ("Shopper · every 3 days", USER, three_day_summary["policies"][three_name]),
+        ("Shopper · weekly", HOLD, weekly_summary["policies"][weekly_name]),
+    ]
+    metrics = [
+        ("Legitimate purchase rate", "%", lambda item: 100 * item["legitimate_purchases"] / item["runs"]),
+        ("Mean gap from optimum", "€", lambda item: item["mean_legitimate_regret_eur"]),
+        ("Actual cap violations", "", lambda item: item["actual_cap_violations"]),
+    ]
+    width, height = 1280, 610
+    lines = _svg_start(
+        width,
+        height,
+        "Held-out shopper sensitivity comparison",
+        "Small multiples compare legitimate purchase rate, mean price gap, and cap violations for SolidHunt, an attentive three-day shopper, and a weekly shopper.",
+    )
+    lines.append('<text x="40" y="38" class="title">Held-out trade-off across attentive and weekly shoppers</text>')
+    panel_width = 390
+    for panel, (title, unit, accessor) in enumerate(metrics):
+        left = 40 + panel * 410
+        top = 100
+        values = [float(accessor(item)) for _, _, item in rows]
+        maximum = max(values + [1.0]) * 1.12
+        lines.append(f'<text x="{left}" y="{top-20}" class="label">{escape(title)}</text>')
+        for index, (label, color, item) in enumerate(rows):
+            value = float(accessor(item))
+            y = top + index * 115
+            bar = panel_width * value / maximum
+            lines.append(f'<text x="{left}" y="{y+17}" class="small">{escape(label)}</text>')
+            lines.append(f'<rect x="{left}" y="{y+30}" width="{panel_width}" height="34" fill="{SOFT}"/>')
+            lines.append(f'<rect x="{left}" y="{y+30}" width="{bar:.1f}" height="34" fill="{color}"/>')
+            formatted = f"{value:.0f}%" if unit == "%" else f"€{value:.2f}" if unit == "€" else f"{value:.0f}"
+            lines.append(f'<text x="{left+min(bar+8, panel_width-2):.1f}" y="{y+53}" class="label">{formatted}</text>')
+        lower = "higher is better" if panel == 0 else "lower is better"
+        lines.append(f'<text x="{left}" y="{top+365}" class="small">{lower}</text>')
+    lines.append("</svg>")
+    _write(path, "\n".join(lines) + "\n")
+
+
+def write_all_plots(output: Path, runs: list[RunEvaluation]) -> None:
+    plots = output / "plots"
+    write_all_run_timelines(plots / "all-runs.svg", runs)
+    write_detailed_timelines(plots / "timelines", runs)
+    write_buy_timing(plots / "buy-timing.svg", runs)
+    write_regret_comparison(plots / "price-gap-comparison.svg", runs)
+    write_regret_cdf(plots / "price-gap-cdf.svg", runs)
+    write_paired_outcomes(plots / "paired-outcomes.svg", runs)
+    write_outcomes(plots / "outcomes.svg", runs)
