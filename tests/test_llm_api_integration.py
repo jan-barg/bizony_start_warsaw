@@ -87,7 +87,9 @@ def test_screenshot_clarification_replays_with_sensitive_diff(client: TestClient
     assert image_b64 not in transcript
 
 
-def test_null_client_intake_returns_503() -> None:
+def test_null_client_intake_degrades_to_regex() -> None:
+    # LLM unavailable must NEVER 503 the composer (the UI has no structured
+    # form): intake degrades to the demoted regex parser (§7.1).
     previous = api.ENGINE
     api.ENGINE = api.FixtureEngine(llm=NullClient(), real_intake=True)
     try:
@@ -97,17 +99,23 @@ def test_null_client_intake_returns_503() -> None:
         )
     finally:
         api.ENGINE = previous
-    assert response.status_code == 503
-    assert "structured form" in response.json()["detail"]
+    assert response.status_code == 200
+    body = response.json()
+    assert body["parser"] == "regex"
+    assert body["status"] == "OK" and body["brief"]["product_query"] == "Nike Dunk Low"
 
 
-def test_replay_cache_miss_returns_503(client: TestClient) -> None:
+def test_replay_cache_miss_degrades_to_regex(client: TestClient) -> None:
+    # Unscripted prompt → replay cache misses → regex fallback, not a 503
+    # (user-visible bug: "request is absent from the reviewed replay cache").
     response = client.post(
         "/intake",
-        json={"world_id": "w_fixture", "input": {"text": "an uncached hunt request"}},
+        json={"world_id": "w_fixture", "input": {"text": "adidas samba og size 42 under €120"}},
     )
-    assert response.status_code == 503
-    assert "reviewed replay cache" in response.json()["detail"]
+    assert response.status_code == 200
+    body = response.json()
+    assert body["parser"] == "regex"
+    assert body["status"] == "OK" and body["brief"]["style_code"] == "GW2288"
 
 
 def test_structured_form_compiles_without_llm() -> None:

@@ -67,7 +67,9 @@ def generate_pricing(
         fx_pair = f"EUR{vendor.currency.value}"
         rate = 1.0 if vendor.currency is Currency.EUR else rate_at_zero[fx_pair]
         base = float(product.fair_price_eur) * stream.uniform(0.92, 1.15) * rate
-        price = base
+        # launch hype: open above base and let mean reversion cool it into the
+        # fair zone — high early prices with decaying variance, organically
+        price = base * stream.uniform(cfg.LAUNCH_PREMIUM_LO, cfg.LAUNCH_PREMIUM_HI)
         initial_stock = stream.randint(1, 12)
         stock = initial_stock
         flash_remaining = 0
@@ -96,7 +98,8 @@ def generate_pricing(
         tick_zero_sticker: Decimal | None = None
         for tick in range(cfg.HORIZON):
             if tick:
-                price += 0.10 * (base - price) + stream.gauss(0.0, 0.012 * base)
+                price += cfg.PRICE_MEAN_REVERSION * (base - price) \
+                    + stream.gauss(0.0, cfg.PRICE_SIGMA_DAILY * base)
                 price = max(0.55 * base, price)
             if flash_remaining == 0 and stream.random() < 0.35 / 30.0:
                 flash_depth = stream.uniform(0.12, 0.25)

@@ -57,6 +57,12 @@ class Constants:
     N_MIDDLEMEN: int = 4
     TRAP_COUNTS: dict[str, int] = field(default_factory=_default_trap_counts)
 
+    # --- price walk (§4.4) — float domain by design; money boundary is in pricing.py ---
+    PRICE_SIGMA_DAILY: float = 0.055       # ~5-6% daily noise (demo-tuned; was 0.012)
+    PRICE_MEAN_REVERSION: float = 0.06     # pull toward fair price per tick (was 0.10)
+    LAUNCH_PREMIUM_LO: float = 1.10        # tick-0 hype premium over the listing's base…
+    LAUNCH_PREMIUM_HI: float = 1.45        # …decays via mean reversion (half-life ~11 days)
+
     # --- customs (§5.3) ---
     RULESET: Ruleset = Ruleset.EU_2026_07
     VAT_PL: Decimal = Decimal("0.23")

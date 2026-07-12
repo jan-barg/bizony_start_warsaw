@@ -49,7 +49,9 @@
 		if (type === 'tick') {
 			currentTick = tick;
 		} else if (type === 'receipt') {
-			pushFeed('receipt', tick, payload);
+			// HOLD is the default state of every quiet day — it belongs on the
+			// chart (one point per day) but would drown the feed in cards.
+			if (payload.action !== 'HOLD') pushFeed('receipt', tick, payload);
 			const quote = payload.chosen?.quote ?? payload.considered?.[0]?.quote;
 			if (quote) {
 				// parseFloat ONLY for chart geometry; the string is kept for display

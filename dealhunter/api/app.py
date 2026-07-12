@@ -30,14 +30,19 @@ from pydantic import BaseModel
 from sse_starlette.sse import EventSourceResponse
 
 from ..core.config import Constants
-from ..core.enums import Action, AskKind, DecidedBy, GeoArb, HuntStatus, IntakeStatus, Mode
+from ..core.enums import (
+    Action, AskKind, DecidedBy, GeoArb, HuntStatus, IntakeStatus, Mode, OrderState,
+)
 from ..core.ids import ask_id as make_ask_id
 from ..core.ids import hunt_id as make_hunt_id
 from ..core.models import (
     Ask, AutoBuy, Brief, Hunt, IntakeResult, Mandate, Receipt, World,
     quote_hash,
 )
+from ..engine import loop as _engine_loop
+from ..engine.alerts import approve_pending_ask, decline_pending_ask
 from ..engine.loop import run_immediate as engine_run_immediate
+from ..engine.loop import run_monitor as engine_run_monitor
 from ..llm.cache import CacheMode, CachedClient, LLMCacheMiss
 from ..llm.client import IntakeUnavailable, LLMClient, LLMProtocolError, NullClient
 from ..llm.intake import IntakeState, clarify_intake, start_intake, start_structured_intake
@@ -49,7 +54,9 @@ from .image_store import SessionImageStore
 # Generated worlds are deterministic and expensive-ish (~24k rows) — cache them
 # at module level so tests resetting FixtureEngine don't regenerate per test.
 _GEN_WORLDS: dict[int, World] = {}
-DEFAULT_WORLD_ID = "w_42"
+# DEALHUNTER_WORLD=w_fixture → instant pre-computed demo timeline;
+# unset → w_42, the live-generated world + real monitor loop.
+DEFAULT_WORLD_ID = os.environ.get("DEALHUNTER_WORLD", "w_42")
 
 
 def _generated_world(seed: int) -> World:
@@ -205,10 +212,30 @@ class FixtureEngine:
         return rows
 
 
+class _ReplayOrAbstain:
+    """REPLAY misses abstain (the NullClient shape) instead of raising, so
+    unscripted prompts degrade to the deterministic fallbacks — regex intake,
+    fact-sheet narration, no-veto tier 4 — never to a 500. Attribute access
+    passes through to the wrapped client."""
+
+    def __init__(self, inner: LLMClient) -> None:
+        self._inner = inner
+
+    def complete(self, request: dict) -> dict:
+        try:
+            return self._inner.complete(request)
+        except LLMCacheMiss:
+            return {"abstain": True}
+
+    def __getattr__(self, name: str) -> Any:
+        return getattr(self._inner, name)
+
+
 def _default_llm() -> LLMClient:
     if os.environ.get("DEALHUNTER_NO_LLM") == "1":
         return NullClient()
-    return CachedClient(None, ROOT / CFG.LLM_CACHE_PATH, CFG.LLM_MODEL_PIN, CacheMode.REPLAY)
+    return _ReplayOrAbstain(
+        CachedClient(None, ROOT / CFG.LLM_CACHE_PATH, CFG.LLM_MODEL_PIN, CacheMode.REPLAY))
 
 
 ENGINE = FixtureEngine(llm=_default_llm(), real_intake=True)
@@ -396,14 +423,14 @@ def intake(body: IntakeBody) -> dict[str, Any]:
                 image_ref=image_ref,
                 image_resolver=ENGINE.image_store,
             )
-        except (IntakeUnavailable, LLMCacheMiss, LLMProtocolError, ValueError) as error:
-            raise _intake_http_error(error) from error
-        _store_real_intake(state)
-        return _real_intake_payload(state)
+            _store_real_intake(state)
+            return _real_intake_payload(state)
+        except (IntakeUnavailable, LLMCacheMiss, LLMProtocolError, ValueError):
+            pass    # unscripted prompt → demoted regex parser, never a 503 (§7.1)
     transcript = [body.input.get("text", "")]
     result = ENGINE.parse(transcript)
     session = {"transcript": transcript, "result": result, "diff": [], "hunt_id": None,
-               "world_id": body.world_id}
+               "world_id": body.world_id, "parser": "regex"}
     ENGINE.intakes[intake_id] = session
     if session["result"].status == IntakeStatus.OK:
         session["hunt_id"] = _create_hunt(session["result"], body.world_id)
@@ -444,10 +471,23 @@ def clarify(intake_id: str, body: ClarifyBody) -> dict[str, Any]:
                 CFG,
                 image_resolver=ENGINE.image_store,
             )
-        except (IntakeUnavailable, LLMCacheMiss, LLMProtocolError, ValueError) as error:
-            raise _intake_http_error(error) from error
-        _store_real_intake(state)
-        return _real_intake_payload(state)
+            _store_real_intake(state)
+            return _real_intake_payload(state)
+        except (IntakeUnavailable, LLMCacheMiss, LLMProtocolError, ValueError):
+            # Replay cache has no reviewed turn for this transcript — degrade
+            # the whole session to the regex parser for good (§7.1). The cache
+            # is keyed on the full transcript, so later rounds would miss too.
+            texts = _texts([*current.session.transcript, body.text])
+            session = {"transcript": [*current.session.transcript, body.text],
+                       "result": ENGINE.parse(texts),
+                       "diff": FixtureEngine.field_diff(" ".join(texts[:-1]), " ".join(texts)),
+                       "hunt_id": None, "world_id": current.session.world_id,
+                       "parser": "regex"}
+            ENGINE.intakes[intake_id] = session
+            del ENGINE.real_intakes[intake_id]
+            if session["result"].status == IntakeStatus.OK:
+                session["hunt_id"] = _create_hunt(session["result"], session["world_id"])
+            return _intake_payload(intake_id)
     s = ENGINE.intakes.get(intake_id)
     if s is None:
         raise HTTPException(404, "unknown intake session")
@@ -604,18 +644,131 @@ def _make_ask(hunt: Hunt, receipt: Receipt, seq: int) -> Ask:
                quote_hash=quote_hash(q), narrative=narrative, status="PENDING")
 
 
+def _env(type_: str, tick: int, payload: Any) -> dict[str, str]:
+    return {"event": type_,
+            "data": json.dumps({"type": type_, "tick": tick, "payload": payload})}
+
+
+# Live tap: run_monitor computes a whole segment synchronously (~1s of real
+# work per simulated day on a full world), so without this the SSE stream is
+# silent until the segment ends — the monitor screen looks frozen on day 0
+# (user-reported). Wrapping evaluate_tick at the loop module's import seam
+# surfaces each day's receipt AS IT IS COMPUTED; behavior is unchanged.
+# Only hunts pre-registered in _LIVE are tapped (run_immediate stays untapped).
+_LIVE: dict[str, list[Receipt]] = {}
+_orig_evaluate_tick = _engine_loop.evaluate_tick
+
+
+def _tapped_evaluate_tick(hunt: Hunt, tick: int, world: World, cfg: Constants,
+                          llm: LLMClient) -> Receipt:
+    receipt = _orig_evaluate_tick(hunt, tick, world, cfg, llm)
+    if hunt.id in _LIVE:
+        _LIVE[hunt.id].append(receipt)
+    return receipt
+
+
+_engine_loop.evaluate_tick = _tapped_evaluate_tick
+
+
+async def _engine_stream(h: Hunt, hunt_id: str, world_id: str, delay: float):
+    """REAL monitor loop over the hunt's generated world (S2 swap): stream
+    receipts live while `run_monitor` computes (via the evaluate_tick tap),
+    pause the world clock on asks (§6.2), resume from the ask tick after
+    resolution, and derive order events from the hunt's ledger. Same envelope
+    as the fixture replayer (§8)."""
+    world = _resolve_world(world_id)
+    last_tick = h.start_tick - 1
+    order_seen: dict[int, str] = {}     # ledger index → last state emitted
+    emitted: set[str] = set()           # receipt ids already streamed
+
+    def order_events(tick: int) -> list[dict[str, str]]:
+        out = []
+        for i, o in enumerate(h.orders):
+            state = o.state.value
+            if order_seen.get(i) != state:
+                order_seen[i] = state
+                payload: dict[str, Any] = {"state": state, "listing_id": o.quote.listing_id}
+                if o.delivery_at_tick is not None:
+                    payload["delivery_at_tick"] = o.delivery_at_tick
+                if o.refund_at_tick is not None:
+                    payload["refund_at_tick"] = o.refund_at_tick
+                out.append(_env("order", tick, payload))
+        return out
+
+    def receipt_events(r: Receipt) -> list[dict[str, str]]:
+        nonlocal last_tick
+        if r.id in emitted:
+            return []
+        emitted.add(r.id)
+        ENGINE.receipts_by_hunt[hunt_id].append(r)
+        out = [_env("tick", t, {}) for t in range(last_tick + 1, r.tick + 1)]
+        last_tick = max(last_tick, r.tick)
+        out.append(_env("receipt", r.tick, json.loads(r.model_dump_json())))
+        out.extend(order_events(r.tick))
+        return out
+
+    try:
+        while True:
+            _LIVE[hunt_id] = []
+            fut = asyncio.get_running_loop().run_in_executor(
+                None, engine_run_monitor, h, world, CFG, ENGINE.llm)
+            idx = 0
+            while True:
+                segment_done = fut.done()
+                live = _LIVE[hunt_id]
+                while idx < len(live):          # narrate days as they compute
+                    for ev in receipt_events(live[idx]):
+                        yield ev
+                    idx += 1
+                if segment_done:
+                    break
+                await asyncio.sleep(0.15)       # the engine sets the pace
+            for r in fut.result():              # backfill (e.g. refund receipts)
+                for ev in receipt_events(r):
+                    yield ev
+            if h.status == HuntStatus.REVOKED or h.mandate.revoked:
+                break
+            if h.status == HuntStatus.PENDING_ASK and h.pending_ask is not None:
+                ask = h.pending_ask
+                ENGINE.asks[ask.id] = ask
+                ENGINE.ask_events.setdefault(ask.id, asyncio.Event())
+                yield _env("ask", ask.tick, json.loads(ask.model_dump_json()))
+                yield _env("status", ask.tick, {"status": h.status.value, "clock": "paused"})
+                await ENGINE.ask_events[ask.id].wait()   # world clock pauses (§6.2)
+                if h.status == HuntStatus.REVOKED or h.mandate.revoked:
+                    break
+                h.status = HuntStatus.RUNNING
+                yield _env("status", ask.tick, {"status": h.status.value, "clock": "running",
+                                                "ask_resolution": ask.status})
+                continue                # run_monitor resumes from the ask tick
+            break
+    finally:
+        _LIVE.pop(hunt_id, None)
+
+    for ev in order_events(last_tick):  # settlement epilogue (refunds)
+        yield ev
+    if h.mandate.revoked:
+        h.status = HuntStatus.REVOKED
+    elif any(o.state in (OrderState.PLACED, OrderState.CONFIRMED) for o in h.orders):
+        h.status = HuntStatus.PURCHASED
+        yield _env("status", last_tick, {"status": h.status.value})
+    if h.status == HuntStatus.REVOKED:
+        yield _env("status", last_tick, {"status": "REVOKED"})
+    yield _env("done", last_tick, {"final_status": h.status.value})
+
+
 @app.get("/hunts/{hunt_id}/events")
 async def events(hunt_id: str, tick_ms: int | None = None) -> EventSourceResponse:
     h = _hunt(hunt_id)
     if h.status != HuntStatus.RUNNING:
         raise HTTPException(409, "hunt is not RUNNING — POST /start first")
     delay = (tick_ms if tick_ms is not None else CFG.TICK_MS) / 1000.0
+    world_id = ENGINE.hunt_world.get(hunt_id, DEFAULT_WORLD_ID)
+    if world_id != "w_fixture":
+        return EventSourceResponse(_engine_stream(h, hunt_id, world_id, delay))
 
     async def stream():
-        def env(type_: str, tick: int, payload: Any) -> dict[str, str]:
-            return {"event": type_,
-                    "data": json.dumps({"type": type_, "tick": tick, "payload": payload})}
-
+        env = _env
         # Scripted-arc coherence: the cancellation/refund receipts belong to the
         # gray order's story. They play ONLY if that order was actually placed
         # (user approved the E2 ask) — declining must never show a merchant
@@ -735,7 +888,17 @@ def _resolve_ask(
         raise HTTPException(404, "unknown ask")
     if ask.status != "PENDING":
         raise HTTPException(409, f"ask already {ask.status} — asks are single-use (§6.3)")
-    ask.status = resolution
+    h = ENGINE.hunts.get(ask.hunt_id)
+    if h is not None and h.pending_ask is not None and h.pending_ask.id == ask_id:
+        # Engine-semantics resolution: DECLINE must record the declined_asks
+        # dedupe key, or the real monitor loop would re-create the same ask
+        # every tick; APPROVE stays quote-hash-bound (§6.3).
+        if resolution == "APPROVED":
+            approve_pending_ask(h, ask.quote_hash)
+        else:
+            decline_pending_ask(h)
+    else:
+        ask.status = resolution
     ENGINE.asks[ask_id] = ask
     ENGINE.ask_events[ask_id].set()
     return {"ask_id": ask_id, "status": resolution}
@@ -786,7 +949,8 @@ def eval_report(run_id: str) -> dict[str, str]:
 @app.get("/config")
 def config() -> dict[str, Any]:
     return {"tick_ms": CFG.TICK_MS, "horizon": CFG.HORIZON, "backend": "hybrid",
-            "real": ["worlds", "dossier", "run_immediate", "intake", "narration"],
-            "fixture": ["monitor_events"],
+            "real": ["worlds", "dossier", "run_immediate", "monitor_events", "intake",
+                     "narration"],
+            "fixture": ["monitor_events:w_fixture"],
             "llm_mode": "null" if isinstance(ENGINE.llm, NullClient) else "replay",
             "default_world": DEFAULT_WORLD_ID}

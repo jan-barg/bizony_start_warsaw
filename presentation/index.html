@@ -1,0 +1,420 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="description" content="SolidHunt — START x OpenAI Warsaw Hackathon presentation." />
+  <title>SolidHunt — START x OpenAI Warsaw Hackathon</title>
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <main class="deck" aria-live="polite">
+    <section class="slide cover active" data-title="SolidHunt" aria-hidden="false">
+      <div class="cover-copy">
+        <img class="brand-logo" src="assets/brand/solidhunt-logo.svg" alt="SolidHunt" />
+        <h1>The deal hunter<br /><span>that never sleeps.</span></h1>
+        <p class="cover-meta">START X OPENAI WARSAW HACKATHON</p>
+      </div>
+      <div class="cover-beacon" aria-hidden="true">
+        <svg class="search-tree" viewBox="0 0 460 720" role="presentation">
+          <g class="tree-lines">
+            <path class="branch b1" pathLength="1" d="M48 360 H150" />
+            <path class="branch b2" pathLength="1" d="M150 360 L235 170" />
+            <path class="branch b3" pathLength="1" d="M150 360 H235" />
+            <path class="branch b4" pathLength="1" d="M150 360 L235 550" />
+            <path class="branch b5" pathLength="1" d="M235 170 L320 105" />
+            <path class="branch b6" pathLength="1" d="M235 170 L320 235" />
+            <path class="branch b7" pathLength="1" d="M235 360 L320 315" />
+            <path class="branch b8" pathLength="1" d="M235 360 L320 405" />
+            <path class="branch b9" pathLength="1" d="M235 550 L320 485" />
+            <path class="branch b10" pathLength="1" d="M235 550 L320 615" />
+            <path class="branch winning" pathLength="1" d="M320 235 L390 205" />
+          </g>
+          <g class="tree-dots">
+            <circle class="dot d1" cx="48" cy="360" r="8" />
+            <circle class="dot d2" cx="150" cy="360" r="8" />
+            <circle class="dot d3" cx="235" cy="170" r="8" />
+            <circle class="dot d4" cx="235" cy="360" r="8" />
+            <circle class="dot d5" cx="235" cy="550" r="8" />
+            <circle class="dot d6" cx="320" cy="105" r="7" />
+            <circle class="dot d7" cx="320" cy="235" r="8" />
+            <circle class="dot d8" cx="320" cy="315" r="7" />
+            <circle class="dot d9" cx="320" cy="405" r="7" />
+            <circle class="dot d10" cx="320" cy="485" r="7" />
+            <circle class="dot d11" cx="320" cy="615" r="7" />
+          </g>
+          <g class="tree-labels">
+            <text x="28" y="390">QUERY</text>
+            <text x="205" y="143">LOCAL</text>
+            <text x="205" y="340">EU</text>
+            <text x="205" y="580">GLOBAL</text>
+          </g>
+        </svg>
+        <div class="tree-target">
+          <span class="boom-ring"></span>
+          <div class="focus-mark tree-logo">
+            <i></i><i></i><i></i><i></i><b></b>
+          </div>
+          <strong>FOUND</strong>
+        </div>
+        <div class="tree-status">
+          <span class="searching">SEARCHING 24 / 7</span>
+          <span class="found">TARGET LOCKED</span>
+        </div>
+      </div>
+    </section>
+
+    <section class="slide story" data-title="Jan's story" aria-hidden="true">
+      <header class="slide-head">
+        <span class="kicker">01 · USER STORY</span>
+        <h2>Jan wants one pair.<br />Not a research project.</h2>
+      </header>
+      <div class="story-grid">
+        <figure class="shoe-shot">
+          <img src="assets/product/adidas-samba-og-ki6669.jpg" alt="Beige patterned adidas Samba OG KI6669 shoe" />
+          <figcaption>adidas Samba OG · KI6669</figcaption>
+        </figure>
+        <div class="jan-card">
+          <div class="jan-avatar">J</div>
+          <div>
+            <p class="eyebrow">JAN'S REQUEST</p>
+            <p class="big-spec">EU 43.5</p>
+            <p class="big-spec">≤ €100 <small>delivered</small></p>
+          </div>
+          <p class="jan-quote">“I like the shoes.<br />I hate overpaying.”</p>
+        </div>
+      </div>
+      <a class="source" href="https://www.adidas.pl/buty-samba-og/KI6669.html" target="_blank" rel="noreferrer">Product image: adidas · KI6669</a>
+    </section>
+
+    <section class="slide pain" data-title="The problem" aria-hidden="true">
+      <header class="slide-head">
+        <span class="kicker">02 · THE PROBLEM</span>
+        <h2>He found discounts.<br /><span class="strike">Not certainty.</span></h2>
+      </header>
+      <div class="pain-stage">
+        <article class="noise-card coupon-noise">
+          <span class="noise-label">COUPON</span>
+          <strong>EXTRA20</strong>
+          <p>Expired yesterday</p>
+        </article>
+        <article class="noise-card compare-noise">
+          <span class="noise-label">BEST PRICE*</span>
+          <strong>€74.20</strong>
+          <p class="scam-note">*before shipping, VAT and import</p>
+        </article>
+        <article class="noise-card ui-noise">
+          <span class="noise-label">SEARCH FATIGUE</span>
+          <div class="tab-count"><strong>13</strong><span>open tabs</span></div>
+          <div class="tab-trail"><span>shops</span><span>coupons</span><span>reviews</span><span>shipping</span></div>
+          <p>No answer. Just more searching.</p>
+        </article>
+      </div>
+    </section>
+
+    <section class="slide cost" data-title="The real price" aria-hidden="true">
+      <header class="slide-head compact">
+        <span class="kicker">03 · THE REAL PROBLEM</span>
+        <h2>Sticker price is only line one.</h2>
+      </header>
+      <div class="cost-grid">
+        <div class="sticker-card">
+          <span>JAPAN STOREFRONT</span>
+          <strong>¥9,900</strong>
+          <p>Looks like <b>€60.00</b></p>
+          <div class="false-best">“best price”</div>
+        </div>
+        <div class="receipt-card">
+          <div class="receipt-head"><span>LANDED COST · POLAND</span><b>EXPLAINED</b></div>
+          <dl>
+            <div><dt>Goods after FX</dt><dd>€60.00</dd></div>
+            <div><dt>Domestic shipping</dt><dd>€4.85</dd></div>
+            <div><dt>Forwarder fees</dt><dd>€4.70</dd></div>
+            <div><dt>International shipping</dt><dd>€14.00</dd></div>
+            <div><dt>Duty</dt><dd>€3.00</dd></div>
+            <div><dt>Import VAT</dt><dd>€18.83</dd></div>
+            <div><dt>Handling</dt><dd>€6.00</dd></div>
+            <div class="total"><dt>Delivered</dt><dd>€111.38</dd></div>
+          </dl>
+        </div>
+        <div class="decision-card">
+          <span>JAN'S LIMIT</span>
+          <strong>€100.00</strong>
+          <div class="reject-badge">REJECT · €11.38 OVER</div>
+          <p>Cheap sticker.<br /><b>Wrong deal.</b></p>
+        </div>
+      </div>
+      <div class="source-group">
+        <a class="source" href="../implementation-spec.md" target="_blank">Exact example: implementation spec §11 · V4</a>
+        <a class="source" href="https://taxation-customs.ec.europa.eu/news/guidance-and-legal-text-temporary-flat-fee-low-value-imports-which-will-apply-until-1-july-2028-2026-06-08_en" target="_blank" rel="noreferrer">EU low-value import guidance, June 2026</a>
+      </div>
+    </section>
+
+    <section class="slide reveal" data-title="Meet SolidHunt" aria-hidden="true">
+      <div class="reveal-inner">
+        <span class="kicker">04 · THE REVEAL</span>
+        <h2>Jan, meet</h2>
+        <img src="assets/brand/solidhunt-logo.svg" alt="SolidHunt" />
+        <div class="reveal-steps">
+          <span>Name the product.</span>
+          <span>Set your budget.</span>
+          <strong>We do the hunting.</strong>
+        </div>
+      </div>
+    </section>
+
+    <section class="slide reality" data-title="Deal reality" aria-hidden="true">
+      <header class="slide-head compact">
+        <span class="kicker">05 · ELIGIBILITY ENGINE</span>
+        <h2>We price the route.<br />Not the sticker.</h2>
+      </header>
+      <div class="reality-grid">
+        <article class="reality-card middleman-card">
+          <span>01 · WHEN THE STORE WON'T SHIP TO POLAND</span>
+          <div class="middleman-route" aria-label="The Japanese store ships to GeoRoutes, which forwards the parcel to Jan in Poland">
+            <div class="route-stop">
+              <svg viewBox="0 0 48 48" aria-hidden="true"><path d="M9 18h30v22H9zM7 18l5-9h24l5 9M18 9v9m12-9v9" /></svg>
+              <small>JP STORE</small>
+            </div>
+            <i>→</i>
+            <div class="route-stop middle-stop">
+              <svg viewBox="0 0 48 48" aria-hidden="true"><path d="M8 16 24 8l16 8-16 8L8 16Zm0 0v17l16 8 16-8V16M24 24v17" /><path d="m14 29 4 2-4 2m20-4-4 2 4 2" /></svg>
+              <small>GEOROUTES</small>
+              <em>MIDDLEMAN</em>
+            </div>
+            <i>→</i>
+            <div class="route-stop">
+              <svg viewBox="0 0 48 48" aria-hidden="true"><path d="m7 23 17-14 17 14M12 20v20h24V20M20 40V28h8v12" /></svg>
+              <small>JAN · PL</small>
+            </div>
+          </div>
+          <p>Receives locally. Forwards globally.</p>
+          <b>+ €29.55 route cost</b>
+        </article>
+        <article class="reality-card">
+          <span>02 · FX</span>
+          <strong>JPY → EUR</strong>
+          <p>Convert the actual checkout amount</p>
+          <b>¥9,900 → €60.00</b>
+        </article>
+        <article class="reality-card">
+          <span>03 · STOCK</span>
+          <strong>EU 43.5</strong>
+          <p>The right variant must exist now</p>
+          <b class="check">IN STOCK</b>
+        </article>
+        <article class="reality-card">
+          <span>04 · TRUST</span>
+          <strong>0.91 / 1</strong>
+          <p>The website must clear our trust floor</p>
+          <b class="check">ELIGIBLE</b>
+        </article>
+      </div>
+      <div class="reality-verdict">
+        <span>ONLY REAL, BUYABLE OFFERS ENTER THE HUNT</span>
+        <strong>€111.38 delivered</strong>
+      </div>
+    </section>
+
+    <section class="slide demo intake-demo" data-title="" aria-hidden="true">
+      <header class="slide-head compact">
+        <span class="kicker">06 · FROM WORDS TO DATA</span>
+        <h2>He says it once.<br />We structure the hunt.</h2>
+      </header>
+      <div class="parse-stage">
+        <div class="spoken-request">
+          <span>JAN SAYS</span>
+          <p><span class="typing-text">“Cow-print adidas Samba, EU 43.5, max €100 delivered—no rush.”</span><i></i></p>
+        </div>
+        <div class="parse-beam"><span></span><b>UNDERSTAND</b></div>
+        <div class="request-output">
+          <article class="parse-chip chip-1"><span>PRODUCT</span><strong>adidas Samba OG</strong></article>
+          <article class="parse-chip chip-2"><span>STYLE</span><strong>KI6669 · cow print</strong></article>
+          <article class="parse-chip chip-3"><span>SIZE</span><strong>EU 43.5</strong></article>
+          <article class="parse-chip chip-4"><span>TOTAL LIMIT</span><strong>€100 delivered</strong></article>
+          <article class="parse-chip chip-5"><span>TIMING</span><strong>Wait for the right deal</strong></article>
+        </div>
+      </div>
+    </section>
+
+    <section class="slide routes" data-title="Routes and timing" aria-hidden="true">
+      <header class="slide-head compact">
+        <span class="kicker">07 · ROUTES + TIMING</span>
+        <h2>Find the best deal now.<br />Or the right moment later.</h2>
+      </header>
+      <div class="route-layout">
+        <div class="route-list">
+          <article class="route-row">
+            <div class="route-icon">PL</div>
+            <div><strong>Direct retailer</strong><span>Item + delivery</span></div>
+            <b>€106.90</b>
+          </article>
+          <article class="route-row winning">
+            <div class="route-icon">DE</div>
+            <div><strong>EU retailer</strong><span>Local sale · ships to Poland</span></div>
+            <b>€96.40</b>
+          </article>
+          <article class="route-row">
+            <div class="route-icon">JP</div>
+            <div><strong>Storefront + forwarder</strong><span>FX · duties · VAT · fees</span></div>
+            <b>€111.38</b>
+          </article>
+        </div>
+        <div class="monitor-card">
+          <div class="monitor-head">
+            <span><i></i> MONITORING</span>
+            <b>day 18 / 90</b>
+          </div>
+          <svg viewBox="0 0 520 255" role="img" aria-label="A price line falls below Jan's 100 euro limit">
+            <line class="gridline" x1="38" y1="60" x2="494" y2="60"></line>
+            <line class="gridline" x1="38" y1="124" x2="494" y2="124"></line>
+            <line class="gridline" x1="38" y1="188" x2="494" y2="188"></line>
+            <line class="capline" x1="38" y1="150" x2="494" y2="150"></line>
+            <text x="404" y="140">JAN'S LIMIT €100</text>
+            <polyline points="38,82 90,96 144,78 198,118 250,110 306,139 360,126 414,166 470,184"></polyline>
+            <circle cx="470" cy="184" r="8"></circle>
+          </svg>
+          <div class="monitor-decision"><span>Deal found</span><strong>€96.40 delivered</strong><b>BUY</b></div>
+        </div>
+      </div>
+      <p class="status-note">Every route is compared by the same number: the full delivered price.</p>
+    </section>
+
+    <section class="slide trust" data-title="Explainable decisions" aria-hidden="true">
+      <header class="slide-head compact">
+        <span class="kicker">08 · EXPLAINABLE BY DESIGN</span>
+        <h2>Every decision leaves a receipt.</h2>
+      </header>
+      <div class="trust-grid receipt-only">
+        <article class="audit-card">
+          <div class="audit-top"><span class="buy-badge">BUY</span><span>decided by CODE · E1</span></div>
+          <h3>€96.40 delivered</h3>
+          <div class="audit-facts">
+            <div><span>Route</span><b>DE → PL · direct</b></div>
+            <div><span>Trust</span><b>0.91 · high</b></div>
+            <div><span>ETA</span><b>2 days</b></div>
+            <div><span>Reason</span><b>within limit · best eligible route</b></div>
+          </div>
+          <div class="hash">receipt h_42_1 · tick 18 · append-only decision record</div>
+        </article>
+      </div>
+      <a class="source" href="../implementation-spec.md" target="_blank">Decision receipts: implementation spec §§5.9–6.3</a>
+    </section>
+
+    <section class="slide stats stats-method" data-title="World model" aria-hidden="true">
+      <header class="slide-head compact">
+        <span class="kicker">09 · WE LIKE MATHS</span>
+        <h2>We built the world model.</h2>
+        <p class="world-model-line">Treat goods like stocks: prices move, routes change, timing matters.</p>
+      </header>
+      <div class="world-model-layout">
+        <figure class="chart-frame timeline-chart world-contact-sheet">
+          <img src="assets/stats/all-runs.svg" alt="One hundred paired simulated market timelines" />
+          <figcaption>100 paired markets × 90 days · seeded and replayable</figcaption>
+        </figure>
+        <div class="world-count"><strong>100</strong><span>market worlds</span></div>
+      </div>
+    </section>
+
+    <section class="slide stats stats-run" data-title="One market close-up" aria-hidden="true">
+      <header class="slide-head compact">
+        <span class="kicker">10 · ONE MARKET, UP CLOSE</span>
+        <h2>One product. Ninety trading days.</h2>
+      </header>
+      <div class="single-run-layout">
+        <img src="assets/stats/run-006.svg" alt="A ninety-day price timeline where SolidHunt buys on day two for 125.38 euros and the casual shopper buys on day 33 for 152.35 euros" />
+        <aside class="run-takeaway"><span>RUN 006</span><strong>€26.97</strong><p>saved on one purchase</p><small>€125.38 vs €152.35 · budget €152.96</small></aside>
+      </div>
+    </section>
+
+    <section class="slide stats stats-gap" data-title="Closer to optimal" aria-hidden="true">
+      <header class="slide-head compact">
+        <span class="kicker">11 · PRICE QUALITY</span>
+        <h2>51% closer to the optimum.</h2>
+      </header>
+      <div class="chart-focus">
+        <img src="assets/stats/price-gap-comparison.svg" alt="Box plot comparing each strategy's distance from the best possible price" />
+      </div>
+    </section>
+
+    <section class="slide stats stats-paired" data-title="Paired savings" aria-hidden="true">
+      <header class="slide-head compact">
+        <span class="kicker">12 · PAIRED COMPARISON</span>
+        <h2>When both buy, SolidHunt<br />wins or ties <span>82.6%</span> of the time.</h2>
+      </header>
+      <div class="paired-layout">
+        <img src="assets/stats/paired-outcomes.svg" alt="Paired comparison showing SolidHunt cheaper 29 times, tied 28 times, and shopper cheaper 12 times" />
+        <div class="saving-badge"><span>AVERAGE PAIRED SAVING</span><strong>€7.36</strong><small>4.8% of the average €154.44 shopper price</small></div>
+      </div>
+    </section>
+
+    <section class="slide stats stats-honesty" data-title="The honest trade-off" aria-hidden="true">
+      <header class="slide-head compact">
+        <span class="kicker">13 · THE HONEST TRADE-OFF</span>
+        <h2>We optimize the deal.<br />Not the purchase count.</h2>
+      </header>
+      <div class="honesty-layout">
+        <figure class="chart-frame outcome-chart"><img src="assets/stats/outcomes.svg" alt="Purchase outcomes across one hundred runs" /></figure>
+        <figure class="chart-frame timing-chart"><img src="assets/stats/buy-timing.svg" alt="Paired chart comparing SolidHunt and casual shopper purchase timing" /></figure>
+      </div>
+      <div class="honesty-note"><strong>79 vs 82</strong><span>legitimate purchases · zero invalid purchases for both · SolidHunt accepts three more misses to avoid weaker deals</span></div>
+    </section>
+
+    <section class="slide team" data-title="Team" aria-hidden="true">
+      <header class="slide-head compact">
+        <span class="kicker">14 · THE TEAM</span>
+        <h2>Four builders. One product.</h2>
+      </header>
+      <div class="team-grid">
+        <article class="person">
+          <img src="assets/team/wiktor-zoga.jpg" alt="Portrait of Wiktor Zoga" />
+          <div><h3>Wiktor Zoga</h3><p>University of Wrocław</p></div>
+        </article>
+        <article class="person">
+          <img src="assets/team/jan-barganowski.jpg" alt="Portrait of Jan Barganowski" />
+          <div><h3>Jan Barganowski</h3><p>Columbia University</p></div>
+        </article>
+        <article class="person">
+          <img src="assets/team/mateusz-lickindorf.jpg" alt="Portrait of Mateusz Lickindorf" />
+          <div><h3>Mateusz Lickindorf</h3><p>Medical doctor · WUST</p></div>
+        </article>
+        <article class="person">
+          <img src="assets/team/krzysztof-romanowski.jpg" alt="Portrait of Krzysztof Romanowski" />
+          <div><h3>Krzysztof Romanowski</h3><p>Łukasiewicz Research Network</p></div>
+        </article>
+      </div>
+    </section>
+
+    <section class="slide close" data-title="Close" aria-hidden="true">
+      <div class="close-inner">
+        <img src="assets/brand/solidhunt-logo.svg" alt="SolidHunt" />
+        <h2>Tell us what you want.<br /><span>We'll find the moment.</span></h2>
+      </div>
+      <div class="close-mark" aria-hidden="true">
+        <div class="focus-mark"><i></i><i></i><i></i><i></i><b></b></div>
+      </div>
+    </section>
+  </main>
+
+  <nav class="deck-nav" aria-label="Presentation controls">
+    <button class="nav-button" id="prev" aria-label="Previous slide">←</button>
+    <div class="progress-track" aria-hidden="true"><i id="progress"></i></div>
+    <span id="counter" aria-label="Slide number">01 / 16</span>
+    <button class="nav-button" id="next" aria-label="Next slide">→</button>
+  </nav>
+
+  <button class="help-button" id="help" aria-label="Show keyboard shortcuts">?</button>
+  <dialog id="help-dialog">
+    <button class="dialog-close" id="help-close" aria-label="Close">×</button>
+    <h3>Presentation controls</h3>
+    <dl>
+      <div><dt>Next / previous</dt><dd>← → · Space · Page Up / Down</dd></div>
+      <div><dt>First / last</dt><dd>Home · End</dd></div>
+      <div><dt>Fullscreen</dt><dd>F</dd></div>
+      <div><dt>Overview</dt><dd>O</dd></div>
+    </dl>
+  </dialog>
+
+  <script src="script.js"></script>
+</body>
+</html>

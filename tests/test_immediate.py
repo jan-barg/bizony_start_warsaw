@@ -29,7 +29,9 @@ def immediate_hunt(mode=Mode.IMMEDIATE) -> Hunt:
         ),
         mandate=Mandate(
             mode=mode,
-            cap_landed_eur=D("150"),
+            # 200: tick-0 prices carry the launch-hype premium since the §4.4
+            # demo retune (LAUNCH_PREMIUM_*); seed-42 dunk-42 lands ~172.74
+            cap_landed_eur=D("200"),
             expires_tick=10,
         ),
         status=HuntStatus.RUNNING,

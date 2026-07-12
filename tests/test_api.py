@@ -185,7 +185,10 @@ async def resolve_asks_as_they_appear(ac: httpx.AsyncClient, plan: dict[str, str
 
 
 async def run_monitor_stream(ac: httpx.AsyncClient, plan: dict[str, str], n_asks: int):
-    r = await ac.post("/intake", json={"input": {"text": "nike dunk panda size 43 under €80"}})
+    # w_fixture pins the SCRIPTED replay these story-arc tests encode; hunts on
+    # generated worlds stream the real engine loop (S2 swap) instead.
+    r = await ac.post("/intake", json={"world_id": "w_fixture",
+                                       "input": {"text": "nike dunk panda size 43 under €80"}})
     hunt_id = r.json()["hunt_id"]
     await ac.post(f"/hunts/{hunt_id}/confirm")
     await ac.post(f"/hunts/{hunt_id}/start")
@@ -293,4 +296,5 @@ class TestMisc:
         body = client.get("/config").json()
         assert body["backend"] == "hybrid" and body["tick_ms"] == 300
         assert {"run_immediate", "intake", "narration"} <= set(body["real"])
-        assert body["fixture"] == ["monitor_events"]
+        assert body["fixture"] == ["monitor_events:w_fixture"]
+        assert "monitor_events" in body["real"]
