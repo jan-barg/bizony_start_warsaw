@@ -67,7 +67,7 @@ The Stage-0 matcher fallback is deleted; the real matcher is memoized per hunt/l
 
 1. **LLM provider = OpenAI `gpt-5.6-terra`** (spec said Anthropic; `anthropic` dep removed) — accepted by merging PR #1.
 2. Positive-EV gray routes and bounded over-cap offers now use deterministic, quote-exact asks; real LLM narration remains C/D integration work.
-3. Monitor SSE still replays `fixtures/receipts_demo.jsonl` even though B's real `run_monitor` is ready — `/config` remains `backend: "hybrid"` until C switches the source.
+3. Generated-world monitor SSE now executes the real monitor strategy. `w_fixture` intentionally retains `fixtures/receipts_demo.jsonl` for deterministic UI regression tests.
 
 ## Current integrated quality-gate blockers
 
@@ -83,7 +83,7 @@ These failures are present on `develop` before Person D's post-merge work. Perso
 1. ✅ `feat/engine-s2` merged into `develop` at `481c409`; V1–V10 are green.
 2. ✅ **B/D:** run-scoped `(hunt.id, listing.id)` memoization and D's extended integration gate are green.
 3. **C/D:** wire real intake/narration and SSE → `run_monitor`; **A builds `evalx`** with the 20-seed S2 run.
-4. **S2 close-out:** delete the fixture replayer, run a browser demo of a fully real monitor hunt, and turn failures from the 20-seed evaluation into the B/D bug queue.
+4. **S2 close-out:** run a browser demo of a fully real generated-world monitor hunt and turn evaluation failures into the B/D bug queue. Keep the explicit `w_fixture` replayer as test-only infrastructure.
 5. **S3:** Judge View, warm demo cache, 200-seed four-policy evaluation, feature freeze, `demo` tag on `main`, and two rehearsals (`--no-llm` and warmed cache).
 
 **Never cut** (from §13.1): invariants, golden vectors, escalation ladder, `--no-llm` full pass, the dossier.

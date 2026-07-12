@@ -132,12 +132,14 @@ def test_projected_world_preserves_immediate_buy_receipt() -> None:
         status=HuntStatus.RUNNING,
         start_tick=0,
     )
-    full_receipt = run_immediate(hunt, world, cfg, NullClient())
-    projected_receipt = run_immediate(hunt.model_copy(deep=True), projected, cfg, NullClient())
+    full_receipt = run_immediate(hunt.model_copy(deep=True), world, cfg, NullClient())
+    projected_receipt = run_immediate(
+        hunt.model_copy(deep=True), projected, cfg, NullClient()
+    )
     assert canonical_json(full_receipt) == canonical_json(projected_receipt)
 
 
-def test_improved_monitor_is_explicitly_not_production_monitor(small_runs) -> None:
+def test_improved_monitor_uses_stable_policy_label(small_runs) -> None:
     assert all(
         run.engine is None or run.engine.policy == "SOLIDHUNT_IMPROVED_MONITOR"
         for run in small_runs

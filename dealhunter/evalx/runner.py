@@ -186,7 +186,7 @@ The casual shopper's visible checkout subtotal understated true landed cost by *
 
 `{engine_name}` uses the implemented production route enumeration, landed-cost math, customs, trust, and expected-value functions. {policy_description}
 
-The production `engine.run_monitor()` entry point is still a stub at this repository checkpoint. These results must therefore be described as a **SolidHunt stopping-policy simulation**, not as production monitor-loop output. The plots and data use that label consistently.
+The production monitor and generated-world app path now use the same three timing triggers. These results remain a **SolidHunt stopping-policy simulation**, because the evaluation uses projected worlds and hidden ground truth strictly for scoring; production decisions use public offer data only.
 
 ## Cohort and benchmark
 

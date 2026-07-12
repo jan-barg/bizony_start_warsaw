@@ -14,9 +14,9 @@ For each seeded 90-day market, the evaluation answers:
 
 Policy development uses seeds 1–100. The default pitch cohort uses untouched seeds 101–200 and one deterministic hunt per seed, producing 100 paired held-out runs and 9,000 daily timeline points.
 
-## Important status boundary
+## Production status
 
-At the S1 repository checkpoint, the production immediate engine is implemented but `engine.run_monitor()` is still a stub.
+The production `engine.run_monitor()` and generated-world SSE path now use the same validated timing strategy described here. The evaluation implementation remains separate so it can use hidden ground truth strictly for scoring and compare policies over projected 90-day worlds.
 
 The evaluation strategy called `SOLIDHUNT_IMPROVED_MONITOR` combines:
 
@@ -24,9 +24,9 @@ The evaluation strategy called `SOLIDHUNT_IMPROVED_MONITOR` combines:
 - Production landed-cost and customs calculations.
 - Production trust scoring.
 - Production cap-referenced expected value for ranking safe candidates.
-- An evaluation timing policy selected on seeds 1–100 and frozen before running seeds 101–200.
+- A timing policy selected on seeds 1–100 and frozen before running seeds 101–200.
 
-It must still be described as a **SolidHunt monitoring-policy simulation**, not production monitor-loop output. The original strict §5.7 simulation is preserved as `SOLIDHUNT_EVAL_MONITOR` for diagnostic reproduction.
+The held-out results remain a **SolidHunt monitoring-policy simulation**, not a claim about live commerce. Production decisions use the same public-data triggers, while hidden labels remain evaluation-only. The original strict §5.7 simulation is preserved as `SOLIDHUNT_EVAL_MONITOR` for diagnostic reproduction.
 
 ## Shared cohort
 
@@ -89,7 +89,7 @@ The actual landed cost and hidden legitimacy are calculated only after the simul
 
 The check interval is configurable through `CasualShopperHypothesis`; daily and weekly sensitivity runs can use intervals 1 and 7 without changing policy code.
 
-## SolidHunt improved monitoring-policy simulation
+## SolidHunt improved monitoring strategy
 
 Each day, the evaluation considers public target listings with correct structured size and condition. Every route passes through the implemented engine's:
 

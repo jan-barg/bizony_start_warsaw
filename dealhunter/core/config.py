@@ -73,6 +73,8 @@ class Constants:
     TREND_FALLING_MULT: Decimal = Decimal("1.25")
     TREND_RISING_MULT: Decimal = Decimal("0.80")
     P_DAILY_CLAMP: Decimal = Decimal("0.95")
+    OBSERVED_LOW_QUANTILE: Decimal = Decimal("0.25")
+    FINAL_WINDOW_TICKS: int = 14
 
     # --- trust (§5.6) ---
     TRUST_HIGH: Decimal = Decimal("0.80")

@@ -34,7 +34,7 @@ Held-out seeds 101–200 against the attentive 3-day shopper:
 
 Against the weekly shopper, SolidHunt also wins coverage (79 versus 70) and mean gap (€7.66 versus €16.22).
 
-`engine.run_monitor()` remains unimplemented, so this is still an evaluation policy using production route/money/customs/trust/EV components—not production monitor-loop output.
+Follow-up integration on `develop` ports the same three timing triggers into `engine.run_monitor()` and the generated-world app stream. The committed held-out results remain evaluation output, with hidden labels used only for scoring.
 
 ## Deviations and boundaries
 

@@ -92,6 +92,52 @@ def stopping_decision(
     return probability < cfg.THETA_STOP, snapshot
 
 
+def improved_stopping_decision(
+    history: list[Decimal],
+    current_best: Decimal,
+    tick: int,
+    last_buy_tick: int,
+    high_confidence: bool,
+    cfg: Constants,
+) -> tuple[bool, StoppingSnapshot, str | None]:
+    """Production form of the held-out validated monitoring strategy.
+
+    Safety and mandate gates are applied before this function. This function
+    controls timing only: a high-confidence under-cap deal can buy immediately,
+    an empirically low observed price can buy after warmup, and the final
+    window avoids depending on stock surviving until one forcing day.
+    """
+    horizon = last_buy_tick - tick
+    observations = [*history, current_best]
+    percentile = (
+        Decimal(sum(value <= current_best for value in observations))
+        / Decimal(len(observations))
+    ).quantize(PROBABILITY_QUANTUM)
+    snapshot = StoppingSnapshot(
+        p_better=None,
+        horizon=horizon,
+        theta=cfg.OBSERVED_LOW_QUANTILE,
+        n_obs=len(observations),
+    )
+    if horizon < 0:
+        return False, snapshot, None
+
+    observed_low = (
+        len(observations) >= cfg.MIN_OBS
+        and percentile <= cfg.OBSERVED_LOW_QUANTILE
+        and current_best <= min(observations) + cfg.GOOD_DEAL_MARGIN_EUR
+    )
+    final_window_start = last_buy_tick - cfg.FINAL_WINDOW_TICKS + 1
+
+    if high_confidence:
+        return True, snapshot, "high_confidence_under_target"
+    if observed_low:
+        return True, snapshot, "observed_low"
+    if tick >= final_window_start:
+        return True, snapshot, "final_window_fallback"
+    return False, snapshot, None
+
+
 def deal_percentile(history: list[Decimal], current_best: Decimal) -> Decimal:
     """Smoothed empirical percentile; evidence only, never a purchase gate."""
     rank = 1 + sum(value <= current_best for value in history)

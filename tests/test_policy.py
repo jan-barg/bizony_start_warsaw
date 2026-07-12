@@ -300,14 +300,13 @@ def test_matcher_is_memoized_per_hunt_and_listing(monkeypatch):
     assert calls == len(world().listings)
 
 
-def test_monitor_warmup_alerts_then_holds_with_stopping_evidence():
+def test_monitor_buys_high_confidence_deal_with_strategy_evidence():
     current = monitor_hunt()
     first = evaluate_tick(current, 0, world(), CFG, NullClient())
-    second = evaluate_tick(current, 1, world(), CFG, NullClient())
-    assert first.action == Action.ALERT
-    assert second.action == Action.HOLD
-    assert second.stopping is not None
-    assert second.stopping.n_obs == 1
+    assert first.action == Action.BUY
+    assert first.stopping is not None
+    assert first.stopping.n_obs == 1
+    assert first.reasons[0] == "high_confidence_under_target"
 
 
 def test_monitor_forces_buy_on_last_mandate_tick():

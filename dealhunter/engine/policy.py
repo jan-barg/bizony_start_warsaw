@@ -51,7 +51,12 @@ from .alerts import (
     create_ask,
     record_interruption,
 )
-from .stopping import deal_percentile, final_buy_tick, p_better, stopping_decision
+from .stopping import (
+    deal_percentile,
+    final_buy_tick,
+    improved_stopping_decision,
+    p_better,
+)
 
 
 _MATCH_MEMO: ContextVar[dict[tuple[str, str], MatchResult] | None] = ContextVar(
@@ -90,6 +95,17 @@ def _match_listing(listing, hunt: Hunt, world: World, llm: LLMClient) -> MatchRe
 def _evaluation_sort_key(evaluation: Evaluation):
     quote = evaluation.quote
     return (-evaluation.ev_eur, quote.listing_id, quote.kind, quote.middleman_id or "")
+
+
+def _improved_monitor_sort_key(evaluation: Evaluation):
+    quote = evaluation.quote
+    return (
+        -evaluation.ev_eur,
+        quote.landed_eur,
+        quote.listing_id,
+        quote.kind,
+        quote.middleman_id or "",
+    )
 
 
 def _considered_sort_key(evaluation: Evaluation):
@@ -252,7 +268,10 @@ def evaluate_tick(hunt: Hunt, tick: int, world: World, cfg: Constants, llm: LLMC
         for evaluation in evaluations
         if evaluation.eligibility == Eligibility.QUALIFYING
         and evaluation.trust >= cfg.TRUST_FLOOR
-        and evaluation.ev_eur > 0
+        and (
+            hunt.mandate.mode == Mode.MONITOR
+            or evaluation.ev_eur > 0
+        )
     ]
     qualifying = [item for item in qualifying_all if item.purchase_eligible]
     selection: list[Evaluation] = []
@@ -288,15 +307,29 @@ def evaluate_tick(hunt: Hunt, tick: int, world: World, cfg: Constants, llm: LLMC
         default=None,
     )
     stopping = None
+    monitor_trigger = None
+    strong_selection: list[Evaluation] = []
     should_stop = hunt.mandate.mode == Mode.IMMEDIATE
     if hunt.mandate.mode == Mode.MONITOR and selection and current_history_best is not None:
         minimum_eta = _minimum_feasible_eta(hunt, tick, world, cfg, llm)
         if minimum_eta is not None:
-            should_stop, stopping = stopping_decision(
+            calibrated_floor = (cfg.TRUST_FLOOR + cfg.TRUST_HIGH) / Decimal("2")
+            strong_selection = [
+                evaluation
+                for evaluation in selection
+                if evaluation.trust >= cfg.TRUST_HIGH
+                or (
+                    evaluation.trust >= calibrated_floor
+                    and evaluation.quote.landed_eur
+                    <= hunt.mandate.cap_landed_eur - cfg.GOOD_DEAL_MARGIN_EUR
+                )
+            ]
+            should_stop, stopping, monitor_trigger = improved_stopping_decision(
                 previous_best,
                 current_history_best,
                 tick,
                 final_buy_tick(hunt, minimum_eta),
+                bool(strong_selection),
                 cfg,
             )
 
@@ -347,7 +380,21 @@ def evaluate_tick(hunt: Hunt, tick: int, world: World, cfg: Constants, llm: LLMC
         reasons = ["auto_buy_conditions_satisfied", *policy_notes]
         stopping = stopping if hunt.mandate.mode == Mode.MONITOR else None
     elif selection and should_stop:
-        chosen = sorted(selection, key=_evaluation_sort_key)[0]
+        monitor_selection = (
+            strong_selection
+            if hunt.mandate.mode == Mode.MONITOR
+            and monitor_trigger == "high_confidence_under_target"
+            and strong_selection
+            else selection
+        )
+        chosen = sorted(
+            monitor_selection,
+            key=(
+                _improved_monitor_sort_key
+                if hunt.mandate.mode == Mode.MONITOR
+                else _evaluation_sort_key
+            ),
+        )[0]
         if (
             chosen.quote.access_tier == AccessTier.IP_GATED
             and hunt.mandate.geo_arbitrage == GeoArb.ASK
@@ -379,7 +426,7 @@ def evaluate_tick(hunt: Hunt, tick: int, world: World, cfg: Constants, llm: LLMC
             reasons = [
                 "immediate_best_ev"
                 if hunt.mandate.mode == Mode.IMMEDIATE
-                else "stopping_rule_buy",
+                else monitor_trigger or "improved_monitor_buy",
                 *policy_notes,
             ]
     else:

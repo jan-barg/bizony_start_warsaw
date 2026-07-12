@@ -185,7 +185,13 @@ async def resolve_asks_as_they_appear(ac: httpx.AsyncClient, plan: dict[str, str
 
 
 async def run_monitor_stream(ac: httpx.AsyncClient, plan: dict[str, str], n_asks: int):
-    r = await ac.post("/intake", json={"input": {"text": "nike dunk panda size 43 under €80"}})
+    r = await ac.post(
+        "/intake",
+        json={
+            "world_id": "w_fixture",
+            "input": {"text": "nike dunk panda size 43 under €80"},
+        },
+    )
     hunt_id = r.json()["hunt_id"]
     await ac.post(f"/hunts/{hunt_id}/confirm")
     await ac.post(f"/hunts/{hunt_id}/start")
@@ -194,6 +200,33 @@ async def run_monitor_stream(ac: httpx.AsyncClient, plan: dict[str, str], n_asks
         ac.get(f"/hunts/{hunt_id}/events", params={"tick_ms": 0}), timeout=30)
     resolved = await asyncio.wait_for(resolver, timeout=5)
     return hunt_id, parse_sse(resp.text), resolved
+
+
+@pytest.mark.anyio
+async def test_real_monitor_stream_uses_improved_strategy():
+    api.ENGINE = api.FixtureEngine()
+    transport = httpx.ASGITransport(app=api.app)
+    async with httpx.AsyncClient(transport=transport, base_url="http://test") as ac:
+        response = await ac.post(
+            "/intake",
+            json={"input": {"text": "nike dunk panda size 42 under €150"}},
+        )
+        hunt_id = response.json()["hunt_id"]
+        await ac.post(f"/hunts/{hunt_id}/confirm")
+        await ac.post(f"/hunts/{hunt_id}/start")
+        stream = await ac.get(f"/hunts/{hunt_id}/events", params={"tick_ms": 0})
+        seen = parse_sse(stream.text)
+        buys = [
+            event for event in seen
+            if event["type"] == "receipt" and event["payload"]["action"] == "BUY"
+        ]
+        assert buys
+        assert buys[0]["payload"]["reasons"][0] in {
+            "high_confidence_under_target",
+            "observed_low",
+            "final_window_fallback",
+        }
+        assert seen[-1]["payload"]["final_status"] == "PURCHASED"
 
 
 def order_states(seen: list[dict]) -> list[str]:
@@ -292,5 +325,5 @@ class TestMisc:
     def test_config(self, client):
         body = client.get("/config").json()
         assert body["backend"] == "hybrid" and body["tick_ms"] == 300
-        assert {"run_immediate", "intake", "narration"} <= set(body["real"])
-        assert body["fixture"] == ["monitor_events"]
+        assert {"run_immediate", "run_monitor", "intake", "narration"} <= set(body["real"])
+        assert body["fixture"] == ["w_fixture_monitor_events"]

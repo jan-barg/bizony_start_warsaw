@@ -2,7 +2,6 @@ from decimal import Decimal as D
 
 from dealhunter.core.enums import AccessTier, Action, Geo, GeoArb, HuntStatus, OrderState
 from dealhunter.core.models import GeoPromo, MatchResult
-from dealhunter.engine.alerts import approve_pending_ask
 from dealhunter.engine.loop import run_immediate, run_monitor
 from dealhunter.llm.client import NullClient
 from tests.test_policy import CFG, hunt, monitor_hunt, world
@@ -17,11 +16,12 @@ def test_immediate_buy_creates_confirmed_order():
     assert current.orders[0].state == OrderState.CONFIRMED
 
 
-def test_monitor_runs_alert_hold_and_forced_buy():
+def test_monitor_uses_improved_high_confidence_strategy():
     current = monitor_hunt(expires=3)
     receipts = run_monitor(current, world(), CFG, NullClient())
     primary = [receipt.action for receipt in receipts if not receipt.reasons[0].startswith("refund_")]
-    assert primary == [Action.ALERT, Action.HOLD, Action.BUY]
+    assert primary == [Action.BUY]
+    assert receipts[0].reasons[0] == "high_confidence_under_target"
     assert current.status == HuntStatus.PURCHASED
     assert current.orders[-1].state == OrderState.CONFIRMED
 
@@ -46,7 +46,7 @@ def test_monitor_receipts_are_byte_deterministic():
     ]
 
 
-def test_monitor_ask_pauses_and_approval_resumes_same_tick(monkeypatch):
+def test_monitor_prefers_safe_legal_route_over_gray_ask(monkeypatch):
     w = world()
     promo = GeoPromo(
         id="g_ip_loop",
@@ -70,15 +70,11 @@ def test_monitor_ask_pauses_and_approval_resumes_same_tick(monkeypatch):
     monkeypatch.setattr("dealhunter.engine.policy.match", only_jp_listing)
     current = monitor_hunt(cap="160", expires=1)
     current.mandate.geo_arbitrage = GeoArb.ASK
-    first = run_monitor(current, w, CFG, NullClient())
-    assert first[-1].action == Action.ASK
-    assert current.status == HuntStatus.PENDING_ASK
-    assert current.pending_ask is not None
-    approve_pending_ask(current, current.pending_ask.quote_hash)
-    second = run_monitor(current, w, CFG, NullClient())
-    assert second[0].tick == 0
-    assert second[0].action == Action.BUY
-    assert current.pending_ask.status == "CONSUMED"
+    receipts = run_monitor(current, w, CFG, NullClient())
+    assert receipts[-1].action == Action.BUY
+    assert receipts[-1].chosen is not None
+    assert receipts[-1].chosen.quote.access_tier != AccessTier.IP_GATED
+    assert current.pending_ask is None
     assert current.status == HuntStatus.PURCHASED
 
 

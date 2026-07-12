@@ -1,11 +1,8 @@
 """FastAPI surface — spec §8. Branch feat/api-ui (Work Order 4).
 
-HYBRID backend (post-S1): worlds and IMMEDIATE mode run on the REAL engine
-(`generate_world` + `run_immediate` on generated worlds); intake remains the
-deterministic regex fake (real LLM intake is Work Order 3) and the MONITOR
-SSE stream still replays `fixtures/receipts_demo.jsonl` — the real monitor
-loop (stopping + asks + orders) is feat/engine's next slice. The endpoint
-signatures and event envelopes never change across these swaps (§8).
+Generated worlds, immediate execution, and monitor execution run on the real
+engine. `w_fixture` remains available for deterministic UI-story regression
+tests. Endpoint signatures and event envelopes are identical for both paths.
 
 The UI is a pure consumer of receipts + events: no decision logic client-side.
 """
@@ -32,7 +29,10 @@ from ..core.models import (
     Ask, AutoBuy, Brief, Hunt, IntakeResult, Mandate, Receipt, World,
     quote_hash,
 )
+from ..engine.alerts import approve_pending_ask, decline_pending_ask
+from ..engine.ledger import place_order, process_refunds, settle_outstanding_refunds
 from ..engine.loop import run_immediate as engine_run_immediate
+from ..engine.policy import _match_memo_scope, evaluate_tick
 from ..llm.cache import CacheMode, CachedClient, LLMCacheMiss
 from ..llm.client import IntakeUnavailable, LLMClient, LLMProtocolError, NullClient
 from ..llm.intake import IntakeState, clarify_intake, start_intake, start_structured_intake
@@ -579,10 +579,108 @@ async def events(hunt_id: str, tick_ms: int | None = None) -> EventSourceRespons
         raise HTTPException(409, "hunt is not RUNNING — POST /start first")
     delay = (tick_ms if tick_ms is not None else CFG.TICK_MS) / 1000.0
 
-    async def stream():
-        def env(type_: str, tick: int, payload: Any) -> dict[str, str]:
-            return {"event": type_,
-                    "data": json.dumps({"type": type_, "tick": tick, "payload": payload})}
+    def env(type_: str, tick: int, payload: Any) -> dict[str, str]:
+        return {"event": type_,
+                "data": json.dumps({"type": type_, "tick": tick, "payload": payload})}
+
+    async def real_stream():
+        world_id = ENGINE.hunt_world.get(hunt_id, DEFAULT_WORLD_ID)
+        world = _resolve_world(world_id)
+        tick = h.start_tick
+        final_tick = tick - 1
+
+        with _match_memo_scope():
+            while tick < h.mandate.expires_tick:
+                final_tick = tick
+                if h.status == HuntStatus.REVOKED or h.mandate.revoked:
+                    h.status = HuntStatus.REVOKED
+                    break
+
+                yield env("tick", tick, {})
+                await asyncio.sleep(delay)
+
+                for refund in process_refunds(h, tick):
+                    ENGINE.receipts_by_hunt[hunt_id].append(refund)
+                    yield env("receipt", tick, json.loads(refund.model_dump_json()))
+                    yield env("order", tick, {"state": "REFUNDED"})
+
+                receipt = evaluate_tick(h, tick, world, CFG, NullClient())
+                ENGINE.receipts_by_hunt[hunt_id].append(receipt)
+                yield env("receipt", tick, json.loads(receipt.model_dump_json()))
+
+                if receipt.action == Action.ASK:
+                    ask = h.pending_ask
+                    if ask is None:
+                        raise RuntimeError("real monitor emitted ASK without pending consent")
+                    ENGINE.asks[ask.id] = ask
+                    ENGINE.ask_events[ask.id] = asyncio.Event()
+                    h.status = HuntStatus.PENDING_ASK
+                    yield env("ask", tick, json.loads(ask.model_dump_json()))
+                    yield env("status", tick, {"status": h.status.value, "clock": "paused"})
+                    await ENGINE.ask_events[ask.id].wait()
+                    if h.status == HuntStatus.REVOKED:
+                        break
+                    h.status = HuntStatus.RUNNING
+                    yield env(
+                        "status",
+                        tick,
+                        {
+                            "status": h.status.value,
+                            "clock": "running",
+                            "ask_resolution": ask.status,
+                        },
+                    )
+                    if ask.status == "APPROVED":
+                        continue
+                    h.pending_ask = None
+                    tick += 1
+                    continue
+
+                if receipt.action == Action.BUY:
+                    if receipt.chosen is None:
+                        raise RuntimeError("real monitor emitted BUY without a quote")
+                    order = place_order(h, receipt.chosen, tick, world, CFG)
+                    yield env(
+                        "order",
+                        tick,
+                        {"state": "PLACED", "listing_id": order.quote.listing_id},
+                    )
+                    if order.state.value == "CANCELLED_BY_MERCHANT":
+                        yield env(
+                            "order",
+                            tick,
+                            {
+                                "state": order.state.value,
+                                "refund_at_tick": order.refund_at_tick,
+                            },
+                        )
+                        tick += 1
+                        continue
+                    yield env(
+                        "order",
+                        tick,
+                        {
+                            "state": order.state.value,
+                            "delivery_at_tick": order.delivery_at_tick,
+                        },
+                    )
+                    yield env("status", tick, {"status": h.status.value})
+                    yield env("done", tick, {"final_status": h.status.value})
+                    return
+
+                tick += 1
+
+        if h.status == HuntStatus.RUNNING:
+            h.status = HuntStatus.EXPIRED
+        for refund in settle_outstanding_refunds(h, max(tick, final_tick + 1)):
+            ENGINE.receipts_by_hunt[hunt_id].append(refund)
+            yield env("receipt", refund.tick, json.loads(refund.model_dump_json()))
+            yield env("order", refund.tick, {"state": "REFUNDED"})
+            final_tick = refund.tick
+        yield env("status", final_tick, {"status": h.status.value})
+        yield env("done", final_tick, {"final_status": h.status.value})
+
+    async def fixture_stream():
 
         # Scripted-arc coherence: the cancellation/refund receipts belong to the
         # gray order's story. They play ONLY if that order was actually placed
@@ -669,7 +767,10 @@ async def events(hunt_id: str, tick_ms: int | None = None) -> EventSourceRespons
             yield env("status", last_tick, {"status": "REVOKED"})
         yield env("done", last_tick, {"final_status": h.status.value})
 
-    return EventSourceResponse(stream())
+    world_id = ENGINE.hunt_world.get(hunt_id, DEFAULT_WORLD_ID)
+    return EventSourceResponse(
+        fixture_stream() if world_id == "w_fixture" else real_stream()
+    )
 
 
 # ---------------------------------------------------------------------------
@@ -684,7 +785,14 @@ def _resolve_ask(
         raise HTTPException(404, "unknown ask")
     if ask.status != "PENDING":
         raise HTTPException(409, f"ask already {ask.status} — asks are single-use (§6.3)")
-    ask.status = resolution
+    hunt = ENGINE.hunts.get(ask.hunt_id)
+    if hunt is not None and hunt.pending_ask is ask:
+        if resolution == "APPROVED":
+            approve_pending_ask(hunt, ask.quote_hash)
+        else:
+            decline_pending_ask(hunt)
+    else:
+        ask.status = resolution
     ENGINE.asks[ask_id] = ask
     ENGINE.ask_events[ask_id].set()
     return {"ask_id": ask_id, "status": resolution}
@@ -735,7 +843,7 @@ def eval_report(run_id: str) -> dict[str, str]:
 @app.get("/config")
 def config() -> dict[str, Any]:
     return {"tick_ms": CFG.TICK_MS, "horizon": CFG.HORIZON, "backend": "hybrid",
-            "real": ["worlds", "dossier", "run_immediate", "intake", "narration"],
-            "fixture": ["monitor_events"],
+            "real": ["worlds", "dossier", "run_immediate", "run_monitor", "intake", "narration"],
+            "fixture": ["w_fixture_monitor_events"],
             "llm_mode": "null" if isinstance(ENGINE.llm, NullClient) else "replay",
             "default_world": DEFAULT_WORLD_ID}

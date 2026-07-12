@@ -7,6 +7,7 @@ from dealhunter.engine.stopping import (
     daily_improvement_probability,
     deal_percentile,
     final_buy_tick,
+    improved_stopping_decision,
     p_better,
     stopping_decision,
     trend_slope,
@@ -73,3 +74,31 @@ def test_past_last_buy_tick_never_buys():
 
 def test_deal_percentile_is_smoothed_and_distribution_free():
     assert deal_percentile([D("80"), D("90"), D("100")], D("85")) == D("0.5000")
+
+
+def test_improved_strategy_buys_high_confidence_immediately():
+    buy, snapshot, reason = improved_stopping_decision(
+        [], D("90"), 0, 89, True, CFG
+    )
+    assert buy and reason == "high_confidence_under_target"
+    assert snapshot.n_obs == 1
+
+
+def test_improved_strategy_buys_an_observed_low_after_warmup():
+    buy, snapshot, reason = improved_stopping_decision(
+        [D("100"), D("99"), D("98"), D("97")],
+        D("90"),
+        10,
+        89,
+        False,
+        CFG,
+    )
+    assert buy and reason == "observed_low"
+    assert snapshot.n_obs == CFG.MIN_OBS
+
+
+def test_improved_strategy_uses_safe_final_window_fallback():
+    buy, _snapshot, reason = improved_stopping_decision(
+        [D("90")], D("100"), 76, 89, False, CFG
+    )
+    assert buy and reason == "final_window_fallback"
