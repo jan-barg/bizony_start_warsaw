@@ -15,6 +15,8 @@
 	--state-ask: #7a3bbf;
 
 	--font-sans: Inter, Arial, Helvetica, sans-serif;
+	/* display face for page titles only — body stays Inter per brand */
+	--font-display: 'Space Grotesk', Inter, Arial, Helvetica, sans-serif;
 	--radius-control: 8px;
 	--radius-card: 8px;
 	--focus-ring: 0 0 0 3px rgb(67 242 126 / 45%);
@@ -34,9 +36,11 @@ body {
 }
 
 h1 {
+	font-family: var(--font-display);
 	font-size: 40px;
 	line-height: 1.1;
 	font-weight: 700;
+	letter-spacing: -0.02em;
 	margin: 0 0 16px;
 }
 

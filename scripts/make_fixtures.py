@@ -253,8 +253,11 @@ def rid() -> str:
     seq += 1
     return f"r_{HUNT}_{seq}_{0}"
 
-best = ["96.40", "95.10", "93.80", "92.20", "91.00", "89.60", "88.10", "86.90", "85.30", "84.20",
-        "83.10", "82.40", "81.70", "81.00", "80.60"]
+# Launch-hype opening: starts high with big swings, variance decaying as the
+# market cools, converging into the mandate zone by tick 14 — the agent HOLDs
+# through the chaos instead of chasing it.
+best = ["152.30", "138.70", "146.90", "128.40", "141.20", "121.60", "131.80", "112.90", "104.30",
+        "110.80", "97.50", "91.20", "86.70", "83.40", "80.60"]
 for i, landed in enumerate(best):
     q = demo_quote("l_v002_DD1391-100", landed, i)
     receipts.append(Receipt(
@@ -263,11 +266,13 @@ for i, landed in enumerate(best):
         reasons=[f"hold: best landed {landed} > p_better 0.62 at theta 0.25"],
         stopping=StoppingSnapshot(p_better=D("0.62"), horizon=90 - i, theta=D("0.25"), n_obs=i + 1)))
 
-q_alert = demo_quote("l_v003_DD1391-100", "112.37", 15)
+# coherent with the series: 79.90 IS a new low after the 80.60 floor at tick 14
+# (the old 112.37 "new low" made the chart jump upward — user-reported wackiness)
+q_alert = demo_quote("l_v003_DD1391-100", "79.90", 15)
 receipts.append(Receipt(id=rid(), hunt_id=HUNT, tick=15, action=Action.ALERT,
                         decided_by=DecidedBy.CODE, chosen=demo_eval(q_alert, "0.71", "1.20"),
                         considered=[demo_eval(q_alert, "0.71", "1.20")],
-                        reasons=["alert: new observed low 112.37, budget 1/2 left"]))
+                        reasons=["alert: new observed low 79.90, budget 1/2 left"]))
 
 q_gray = demo_quote("l_v004_DD1391-100", "71.20", 22, kind="middleman", mm="m_01",
                     tier=AccessTier.IP_GATED, geo=Geo.JP)

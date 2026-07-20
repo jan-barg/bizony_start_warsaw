@@ -135,7 +135,9 @@ class TestHuntLifecycle:
     def test_run_immediate_real_engine_buy(self, client):
         """Post-S1 hybrid: default world is the REAL generated seed-42 world and
         run_immediate is the REAL engine (mirrors scripts/demo_immediate.py)."""
-        r = client.post("/intake", json={"input": {"text": "nike dunk panda size 42 under €150 now"}})
+        # 200: tick-0 prices carry the launch-hype premium since the §4.4 demo
+        # retune; seed-42 dunk-42 lands ~172.74 on day 0
+        r = client.post("/intake", json={"input": {"text": "nike dunk panda size 42 under €200 now"}})
         assert r.json()["status"] == "OK"
         hunt_id = r.json()["hunt_id"]
         client.post(f"/hunts/{hunt_id}/confirm")

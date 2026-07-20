@@ -10,7 +10,7 @@
 <article class="card order-card" class:cancelled={order.state === 'CANCELLED_BY_MERCHANT'}>
 	<header>
 		<span class="badge {badge.cls}">{badge.label}</span>
-		<span class="muted small num">tick {tick}</span>
+		<span class="muted small num">day {tick}</span>
 	</header>
 	<div class="body small">
 		{#if order.listing_id}
@@ -20,13 +20,13 @@
 			<span class="mono" title={order.quote_hash}>quote {shortHash(order.quote_hash)}</span>
 		{/if}
 		{#if order.state === 'CONFIRMED' && order.delivery_at_tick != null}
-			<span>Delivery expected at tick {order.delivery_at_tick}.</span>
+			<span>Arriving around day {order.delivery_at_tick}.</span>
 		{/if}
 		{#if order.state === 'CANCELLED_BY_MERCHANT'}
 			<span>
 				Merchant cancelled the order.
 				{#if order.refund_at_tick != null}
-					Refund due at tick {order.refund_at_tick}.
+					Refund due around day {order.refund_at_tick}.
 				{/if}
 				The hunt resumes automatically.
 			</span>

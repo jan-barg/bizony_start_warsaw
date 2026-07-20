@@ -114,12 +114,36 @@ class FixtureEngine:
 
     def parse(self, transcript: list[str]) -> IntakeResult:
         text = " ".join(transcript).lower()
+        f = self._extract(text)
+        product, size, cap = f["product"], f["size"], f["cap"]
+
+        missing = [k for k, v in (("product_query", product), ("size_eu", size),
+                                  ("cap_landed_eur", cap)) if v is None]
+        if missing:
+            return IntakeResult(status=IntakeStatus.NEEDS_INFO, missing=missing,
+                                questions=[self.QUESTIONS[k] for k in missing[:CFG.INTAKE_MAX_QUESTIONS]])
+
+        mode = Mode.IMMEDIATE if re.search(r"\b(now|immediately|today|right away)\b", text) else Mode.MONITOR
+        deadline = re.search(r"in (\d+) days", text)
+        auto = bool(re.search(r"(just buy|don'?t ask|auto[- ]?buy)", text))
+        brief = Brief(product_query=product[0], style_code=product[1], size_eu=size,
+                      exclude_resellers="resell" in text)
+        mandate = Mandate(mode=mode, cap_landed_eur=cap,
+                          need_within_ticks=int(deadline.group(1)) if deadline else None,
+                          auto_buy=AutoBuy(enabled=auto),
+                          geo_arbitrage=GeoArb.ASK,
+                          expires_tick=CFG.HORIZON)
+        return IntakeResult(status=IntakeStatus.OK, brief=brief, mandate=mandate)
+
+    def _extract(self, text: str) -> dict[str, Any]:
         product = next((q for tok, q in self.PRODUCTS if tok in text), None)
 
         cap: Decimal | None = None
-        m = re.search(r"(?:€|eur\s?|under\s|below\s|max\s)\s*(\d{2,4})(?!\d)", text)
-        if m:
-            cap = Decimal(m.group(1))
+        # LATEST marked amount wins — the transcript is re-parsed in full on
+        # every clarify, so "under €80 … make it €88" must resolve to 88.
+        marked = re.findall(r"(?:€|eur\s?|under\s|below\s|max\s)\s*(\d{2,4})(?!\d)", text)
+        if marked:
+            cap = Decimal(marked[-1])
 
         size: Decimal | None = None
         m = re.search(r"(?:size|rozmiar|eu)\s*(\d{2}(?:\.5)?)", text)
@@ -151,41 +175,27 @@ class FixtureEngine:
             if candidates:
                 cap = candidates[-1]
 
-        missing = [k for k, v in (("product_query", product), ("size_eu", size),
-                                  ("cap_landed_eur", cap)) if v is None]
-        if missing:
-            return IntakeResult(status=IntakeStatus.NEEDS_INFO, missing=missing,
-                                questions=[self.QUESTIONS[k] for k in missing[:CFG.INTAKE_MAX_QUESTIONS]])
-
-        assert product is not None and size is not None and cap is not None
-        mode = Mode.IMMEDIATE if re.search(r"\b(now|immediately|today|right away)\b", text) else Mode.MONITOR
-        deadline = re.search(r"in (\d+) days", text)
-        auto = bool(re.search(r"(just buy|don'?t ask|auto[- ]?buy)", text))
-        brief = Brief(product_query=product[0], style_code=product[1], size_eu=size,
-                      exclude_resellers="resell" in text)
-        mandate = Mandate(mode=mode, cap_landed_eur=cap,
-                          need_within_ticks=int(deadline.group(1)) if deadline else None,
-                          auto_buy=AutoBuy(enabled=auto),
-                          geo_arbitrage=GeoArb.ASK,
-                          expires_tick=CFG.HORIZON)
-        return IntakeResult(status=IntakeStatus.OK, brief=brief, mandate=mandate)
+        return {"product": product, "size": size, "cap": cap}
 
     @staticmethod
-    def mandate_diff(old: IntakeResult | None, new: IntakeResult) -> list[dict[str, str]]:
+    def field_diff(old_text: str, new_text: str) -> list[dict[str, str]]:
         """Deterministic field-level diff across clarify rounds (§7.1) — the UI
-        renders changed authority in red on the confirm card."""
-        if old is None or old.mandate is None or new.mandate is None:
-            return []
-        diff = []
-        for prefix, o, n in (("brief", old.brief, new.brief), ("mandate", old.mandate, new.mandate)):
-            if o is None or n is None:
-                continue
-            od, nd = o.model_dump(mode="json"), n.model_dump(mode="json")
-            for key in nd:
-                if od.get(key) != nd[key]:
-                    diff.append({"field": f"{prefix}.{key}", "old": json.dumps(od.get(key)),
-                                 "new": json.dumps(nd[key])})
-        return diff
+        renders changed authority on the confirm card. Compares the RAW parsed
+        fields of the two transcripts, so a revision inside the clarify loop
+        ("make it €88" after "under €80") is reported even though NEEDS_INFO
+        rounds never carry a full mandate. Newly-supplied answers (old None)
+        are not changes and are skipped."""
+        o, n = ENGINE._extract(old_text.lower()), ENGINE._extract(new_text.lower())
+        rows = []
+        for key, field in (("product", "brief.product_query"),
+                           ("size", "brief.size_eu"),
+                           ("cap", "mandate.cap_landed_eur")):
+            ov, nv = o[key], n[key]
+            ov = ov[0] if key == "product" and ov else ov
+            nv = nv[0] if key == "product" and nv else nv
+            if ov is not None and nv is not None and ov != nv:
+                rows.append({"field": field, "old": str(ov), "new": str(nv)})
+        return rows
 
 
 def _default_llm() -> LLMClient:
@@ -263,7 +273,8 @@ def _intake_payload(intake_id: str) -> dict[str, Any]:
     r: IntakeResult = s["result"]
     out: dict[str, Any] = {"intake_id": intake_id, "status": r.status.value,
                            "missing": r.missing, "questions": r.questions,
-                           "mandate_diff": s["diff"]}
+                           "mandate_diff": s["diff"],
+                           "parser": s.get("parser", "regex")}
     if r.status == IntakeStatus.OK:
         assert r.brief is not None and r.mandate is not None
         out |= {"hunt_id": s["hunt_id"],
@@ -373,10 +384,10 @@ def intake(body: IntakeBody) -> dict[str, Any]:
                 image_ref=image_ref,
                 image_resolver=ENGINE.image_store,
             )
-        except (IntakeUnavailable, LLMCacheMiss, LLMProtocolError, ValueError) as error:
-            raise _intake_http_error(error) from error
-        _store_real_intake(state)
-        return _real_intake_payload(state)
+            _store_real_intake(state)
+            return _real_intake_payload(state)
+        except (IntakeUnavailable, LLMCacheMiss, LLMProtocolError, ValueError):
+            pass    # unscripted prompt → demoted regex parser, never a 503 (§7.1)
     transcript = [body.input.get("text", "")]
     result = ENGINE.parse(transcript)
     session = {"transcript": transcript, "result": result, "diff": [], "hunt_id": None,
@@ -421,19 +432,32 @@ def clarify(intake_id: str, body: ClarifyBody) -> dict[str, Any]:
                 CFG,
                 image_resolver=ENGINE.image_store,
             )
-        except (IntakeUnavailable, LLMCacheMiss, LLMProtocolError, ValueError) as error:
-            raise _intake_http_error(error) from error
-        _store_real_intake(state)
-        return _real_intake_payload(state)
+            _store_real_intake(state)
+            return _real_intake_payload(state)
+        except (IntakeUnavailable, LLMCacheMiss, LLMProtocolError, ValueError):
+            # Replay cache has no reviewed turn for this transcript — degrade
+            # the whole session to the regex parser for good (§7.1). The cache
+            # is keyed on the full transcript, so later rounds would miss too.
+            transcript = [*current.session.transcript, body.text]
+            session = {"transcript": transcript,
+                       "result": ENGINE.parse(transcript),
+                       "diff": FixtureEngine.field_diff(" ".join(transcript[:-1]),
+                                                        " ".join(transcript)),
+                       "hunt_id": None, "world_id": current.session.world_id}
+            ENGINE.intakes[intake_id] = session
+            del ENGINE.real_intakes[intake_id]
+            if session["result"].status == IntakeStatus.OK:
+                session["hunt_id"] = _create_hunt(session["result"], session["world_id"])
+            return _intake_payload(intake_id)
     s = ENGINE.intakes.get(intake_id)
     if s is None:
         raise HTTPException(404, "unknown intake session")
     if s["hunt_id"]:
         raise HTTPException(409, "intake already promoted to a hunt")
-    prev: IntakeResult = s["result"]
     s["transcript"].append(body.text)
     s["result"] = ENGINE.parse(s["transcript"])          # full re-parse (§7.1)
-    s["diff"] = FixtureEngine.mandate_diff(prev, s["result"])
+    s["diff"] = FixtureEngine.field_diff(" ".join(s["transcript"][:-1]),
+                                         " ".join(s["transcript"]))
     if s["result"].status == IntakeStatus.OK:
         s["hunt_id"] = _create_hunt(s["result"], s.get("world_id", DEFAULT_WORLD_ID))
     return _intake_payload(intake_id)
@@ -699,6 +723,25 @@ async def events(hunt_id: str, tick_ms: int | None = None) -> EventSourceRespons
                 continue                       # no order → no cancellation sub-arc
             if r.action == Action.ASK and r.escalation_tier == "E3" and gray_placed:
                 continue                       # order pending → over-cap ask is incoherent
+
+            # The scripted E3 moment must respect the hunt's ACTUAL cap, not the
+            # cap the fixture was authored against (user-reported: cap €120 got
+            # an ask claiming €84.90 was "over your cap"). §5.9 semantics:
+            #   landed ≤ cap            → E1 stopping BUY, no ask
+            #   cap < landed ≤ cap·(1+band) → E3 one-time ask (the scripted arc)
+            #   landed > cap·(1+band)   → E4 silent auto-reject, never interrupt
+            if r.action == Action.ASK and r.escalation_tier == "E3":
+                cap = h.mandate.cap_landed_eur
+                landed = r.chosen.quote.landed_eur
+                if landed <= cap:
+                    r = r.model_copy(update={
+                        "action": Action.BUY, "decided_by": DecidedBy.CODE,
+                        "escalation_tier": "E1",
+                        "reasons": [f"best price seen: €{landed} all-in — within your €{cap} ceiling",
+                                    "waiting longer was unlikely to beat it — buying now"],
+                    })
+                elif landed > cap * (Decimal("1") + h.mandate.overcap_ask_band_pct):
+                    continue
 
             for t in range(last_tick + 1, r.tick + 1):
                 yield env("tick", t, {})

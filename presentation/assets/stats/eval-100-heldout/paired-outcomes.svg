@@ -1,0 +1,30 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1100" height="500" viewBox="0 0 1100 500" role="img" aria-labelledby="title desc">
+<title id="title">Paired legitimate purchase outcomes</title>
+<desc id="desc">Counts of runs where SolidHunt was cheaper, both policies paid the same landed price, or the shopper was cheaper among runs where both made legitimate purchases.</desc>
+<rect width="1100" height="500" fill="#FFFFFF"/>
+<rect width="1100" height="8" fill="#43F27E"/>
+<style>text{font-family:Inter,Arial,Helvetica,sans-serif;fill:#080808} .small{font-size:11px} .label{font-size:13px;font-weight:650} .title{font-size:24px;font-weight:750;letter-spacing:-.7px} .subtitle{font-size:12px;fill:#59615B} .metric{font-size:18px;font-weight:750;letter-spacing:-.3px}</style>
+<g aria-label="SolidHunt" transform="translate(934 19)">
+<rect width="28" height="28" fill="#43F27E"/>
+<path d="M6 12V6H12 M16 6H22V12 M22 16V22H16 M12 22H6V16" fill="none" stroke="#080808" stroke-width="3"/>
+<rect x="13" y="13" width="3" height="3" fill="#080808" transform="rotate(45 14.5 14.5)"/>
+<text x="38" y="21" font-size="17" letter-spacing="-.7"><tspan font-weight="500">solid</tspan><tspan font-weight="750">hunt</tspan></text>
+</g>
+<text x="42" y="48" class="title">When both bought, who paid less?</text>
+<text x="42" y="73" class="subtitle">69 paired legitimate purchases · landed price compared run by run</text>
+<rect x="80.0" y="155" width="395.1" height="92" fill="#43F27E" stroke="#080808" stroke-width="1"/>
+<text x="277.5" y="198" text-anchor="middle" font-size="30" font-weight="750">29</text>
+<text x="277.5" y="224" text-anchor="middle" class="small">42.0%</text>
+<text x="277.5" y="280" text-anchor="middle" class="label">SolidHunt cheaper</text>
+<rect x="475.1" y="155" width="381.4" height="92" fill="#F4F6F3" stroke="#080808" stroke-width="1"/>
+<text x="665.8" y="198" text-anchor="middle" font-size="30" font-weight="750">28</text>
+<text x="665.8" y="224" text-anchor="middle" class="small">40.6%</text>
+<text x="665.8" y="280" text-anchor="middle" class="label">Same landed price</text>
+<rect x="856.5" y="155" width="163.5" height="92" fill="#FFFFFF" stroke="#080808" stroke-width="1"/>
+<text x="938.3" y="198" text-anchor="middle" font-size="30" font-weight="750">12</text>
+<text x="938.3" y="224" text-anchor="middle" class="small">17.4%</text>
+<text x="938.3" y="280" text-anchor="middle" class="label">Shopper cheaper</text>
+<rect x="80" y="335" width="940" height="82" rx="8" fill="#080808"/>
+<text x="108" y="370" style="fill:#43F27E" class="metric">Average paired saving: €7.36</text>
+<text x="108" y="396" style="fill:#FFFFFF" class="small">Positive means the shopper paid more; the win/tie/loss counts keep the large tail savings in context.</text>
+</svg>

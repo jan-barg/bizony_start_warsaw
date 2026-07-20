@@ -48,4 +48,5 @@ export const approveAsk = (askId) => req('POST', `/asks/${askId}/approve`);
 export const declineAsk = (askId) => req('POST', `/asks/${askId}/decline`);
 
 // ---- SSE ----
-export const eventsUrl = (huntId) => `${API}/hunts/${huntId}/events`;
+export const eventsUrl = (huntId, tickMs) =>
+	`${API}/hunts/${huntId}/events${tickMs ? `?tick_ms=${tickMs}` : ''}`;
