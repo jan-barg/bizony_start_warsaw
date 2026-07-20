@@ -44,7 +44,9 @@ from .image_store import SessionImageStore
 # Generated worlds are deterministic and expensive-ish (~24k rows) — cache them
 # at module level so tests resetting FixtureEngine don't regenerate per test.
 _GEN_WORLDS: dict[int, World] = {}
-DEFAULT_WORLD_ID = "w_42"
+# DEALHUNTER_WORLD=w_fixture → instant pre-computed demo timeline;
+# unset → w_42, the live-generated world + real monitor loop.
+DEFAULT_WORLD_ID = os.environ.get("DEALHUNTER_WORLD", "w_42")
 
 
 def _generated_world(seed: int) -> World:
